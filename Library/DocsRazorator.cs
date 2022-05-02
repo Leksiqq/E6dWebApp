@@ -1,23 +1,28 @@
-﻿using Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation;
-using Microsoft.Extensions.FileProviders;
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
+using System.Net.NetworkInformation;
 using System.Reflection;
 
 namespace Net.Leksi.DocsRazorator;
 
 public class DocsRazorator
 {
-    internal const string SecretWordHeader = "X-Secret-Word";
-    public IEnumerable<string> Generate(IEnumerable<object> requisite, IEnumerable<string> requests)
+    private const string SecretWordHeader = "X-Secret-Word";
+    private const int MaxTcpPort = 65535;
+    private const int StartTcpPort = 5000;
+    private readonly HttpClient _client = new HttpClient();
+    private readonly string secretWord = Guid.NewGuid().ToString();
+    private WebApplication app;
+
+    public async IAsyncEnumerable<KeyValuePair<string, string>> Generate(IEnumerable<object> requisite, IEnumerable<string> requests)
     {
-        ConcurrentQueue<string> queue = new();
+        ConcurrentQueue<KeyValuePair<string, string>> queue = new();
         ManualResetEventSlim manualReset = new();
 
         manualReset.Reset();
 
         Task loadTask = Task.Run(() =>
         {
-            int port = 5000;
+            int port = MaxTcpPort + 1;
             List<Assembly> assemblies = new();
             List<object> requisitors = new();
             foreach (object obj in requisite)
@@ -45,6 +50,22 @@ public class DocsRazorator
             }
             while (true)
             {
+                IPGlobalProperties ipGlobalProperties = IPGlobalProperties.GetIPGlobalProperties();
+                int[] usedPorts = ipGlobalProperties.GetActiveTcpConnections()
+                        .Select(v => v.LocalEndPoint.Port).Where(v => v >= StartTcpPort).OrderBy(v => v).ToArray();
+                for (int i = 1; i < usedPorts.Length; ++i)
+                {
+                    if (usedPorts[i] > usedPorts[i - 1] + 1)
+                    {
+                        port = usedPorts[i] - 1;
+                        break;
+                    }
+                }
+                if (port > MaxTcpPort)
+                {
+                    throw new Exception("No TCP port is available.");
+                }
+
                 WebApplicationBuilder builder = WebApplication.CreateBuilder(new string[] { });
 
                 builder.Logging.ClearProviders();
@@ -56,24 +77,16 @@ public class DocsRazorator
                 {
                     mvcBuilder.AddApplicationPart(assembly);
                 }
-                mvcBuilder.AddRazorRuntimeCompilation();
-
-                builder.Services.Configure<MvcRazorRuntimeCompilationOptions>(options =>
-                {
-                    foreach (Assembly assembly in assemblies)
-                    {
-                        options.FileProviders.Add(new EmbeddedFileProvider(assembly));
-                    }
-                });
 
                 foreach (object obj in requisitors)
                 {
-                    builder.Services.AddSingleton(obj.GetType(), op => obj);
+                    builder.Services.AddSingleton(obj.GetType(), op =>
+                    {
+                        return obj;
+                    });
                 }
 
-                WebApplication app = builder.Build();
-
-                string secretWord = Guid.NewGuid().ToString();
+                app = builder.Build();
 
                 app.Use(async (context, next) =>
                 {
@@ -92,13 +105,7 @@ public class DocsRazorator
 
                 app.Lifetime.ApplicationStarted.Register(() =>
                 {
-                    Client client = new(new Uri(app.Urls.First()), secretWord);
-                    foreach (string request in requests)
-                    {
-                        queue.Enqueue(client.Send(request));
-                        manualReset.Set();
-                    }
-                    app.StopAsync();
+                    manualReset.Set();
                 });
 
                 app.Urls.Clear();
@@ -108,24 +115,25 @@ public class DocsRazorator
                     app.Run();
                     break;
                 }
-                catch (IOException ex)
-                {
-                    Console.WriteLine(ex);
-                    ++port;
-                }
+                catch (IOException ex) { }
             }
+            manualReset.Set();
         });
 
-        do
+        manualReset.Wait();
+        _client.BaseAddress = new Uri(app.Urls.First());
+        _client.DefaultRequestHeaders.Add(SecretWordHeader, secretWord);
+        foreach (string request in requests)
         {
-            manualReset.Wait();
-            manualReset.Reset();
-            while (queue.TryDequeue(out string result))
+            HttpRequestMessage requestMessage = new HttpRequestMessage(HttpMethod.Get, request);
+
+            HttpResponseMessage response = await _client.SendAsync(requestMessage);
+            if (response.IsSuccessStatusCode)
             {
-                yield return result;
+                yield return new KeyValuePair<string, string>(request, await response.Content.ReadAsStringAsync());
             }
         }
-        while (!loadTask.IsCompleted);
+        await app.StopAsync();
 
     }
 }
