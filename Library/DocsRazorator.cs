@@ -13,7 +13,8 @@ public class DocsRazorator
     private readonly string secretWord = Guid.NewGuid().ToString();
     private WebApplication app;
 
-    public async IAsyncEnumerable<KeyValuePair<string, string>> Generate(IEnumerable<object> requisite, IEnumerable<string> requests)
+    public async IAsyncEnumerable<KeyValuePair<string, string>> Generate(IEnumerable<object> requisite, 
+        IEnumerable<string> requests)
     {
         ConcurrentQueue<KeyValuePair<string, string>> queue = new();
         ManualResetEventSlim manualReset = new();

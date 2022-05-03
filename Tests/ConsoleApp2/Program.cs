@@ -10,9 +10,10 @@ await foreach (KeyValuePair<string, string> content in dr.Generate(
     new object[] { 
         requisitor1, 
         requisitor2, 
-        typeof(Template1.Pages.IndexModel).Assembly, 
-        typeof(Template2.Pages.IndexModel).Assembly }, 
-    new[] { "Index1", "Index2"}))
+        typeof(Template1.Pages.IndexModel).Assembly,
+        typeof(Template2.Pages.IndexModel).Assembly
+    }, 
+    new[] { "Index1", "Index2" }))
 {
     Console.WriteLine($"-------- {content.Key} --------");
     Console.WriteLine(content.Value);

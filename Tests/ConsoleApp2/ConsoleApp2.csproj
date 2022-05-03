@@ -12,7 +12,6 @@
     <ProjectReference Include="..\..\..\DocsRazorator\Library\DocsRazoratorDebug.csproj" />
     <ProjectReference Include="..\..\..\DocsRazorator\Tests\Template1\Template1.csproj" />
     <ProjectReference Include="..\..\..\DocsRazorator\Tests\Template2\Template2.csproj" />
-    <ProjectReference Include="..\..\CodeGenerator\CodeGenerator.csproj" />
   </ItemGroup>
 
 </Project>

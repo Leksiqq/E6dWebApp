@@ -9,7 +9,8 @@ namespace Template2.Pages
         public string Message { get; set; }
 
         public IndexModel(Class2 requisitor)
-        { 
+        {
+            Console.WriteLine("here");
             Message = requisitor.Message;
         }
     }
