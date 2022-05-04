@@ -1,31 +1,34 @@
-﻿using System.Collections.Concurrent;
+﻿using Microsoft.AspNetCore.Diagnostics;
+using System.Collections.Concurrent;
 using System.Net.NetworkInformation;
 using System.Reflection;
 
 namespace Net.Leksi.DocsRazorator;
 
-public class DocsRazorator
+public class Generator
 {
     private const string SecretWordHeader = "X-Secret-Word";
     private const int MaxTcpPort = 65535;
     private const int StartTcpPort = 5000;
     private readonly HttpClient _client = new HttpClient();
     private readonly string secretWord = Guid.NewGuid().ToString();
-    private WebApplication app;
 
-    public async IAsyncEnumerable<KeyValuePair<string, string>> Generate(IEnumerable<object> requisite, 
+    public async IAsyncEnumerable<KeyValuePair<string, object>> Generate(IEnumerable<object> requisite, 
         IEnumerable<string> requests)
     {
         ConcurrentQueue<KeyValuePair<string, string>> queue = new();
-        ManualResetEventSlim manualReset = new();
+        ManualResetEventSlim appStartedGate = new();
+        WebApplication app = null!;
 
-        manualReset.Reset();
+        Exception? razorPageException = null;
+
+        appStartedGate.Reset();
 
         Task loadTask = Task.Run(() =>
         {
             int port = MaxTcpPort + 1;
             List<Assembly> assemblies = new();
-            List<object> requisitors = new();
+            List<object> services = new();
             foreach (object obj in requisite)
             {
                 if (obj is Assembly asm)
@@ -36,6 +39,18 @@ public class DocsRazorator
                     }
 
                 }
+                else if (obj is KeyValuePair<Type, object> pair)
+                {
+                    Assembly assembly = pair.Value.GetType().Assembly;
+                    if (!assemblies.Contains(assembly))
+                    {
+                        assemblies.Add(assembly);
+                    }
+                    if (services.Find(v => v is KeyValuePair<Type, object> p &&  p.Key == pair.Key && Object.ReferenceEquals(p.Value, pair.Value)) is null)
+                    {
+                        services.Add(obj);
+                    }
+                }
                 else
                 {
                     Assembly assembly = obj.GetType().Assembly;
@@ -43,9 +58,9 @@ public class DocsRazorator
                     {
                         assemblies.Add(assembly);
                     }
-                    if (!requisitors.Contains(obj))
+                    if (!services.Contains(obj))
                     {
-                        requisitors.Add(obj);
+                        services.Add(obj);
                     }
                 }
             }
@@ -64,7 +79,14 @@ public class DocsRazorator
                 }
                 if (port > MaxTcpPort)
                 {
-                    throw new Exception("No TCP port is available.");
+                    try
+                    {
+                        throw new Exception("No TCP port is available.");
+                    }
+                    finally
+                    {
+                        appStartedGate.Set();
+                    }
                 }
 
                 WebApplicationBuilder builder = WebApplication.CreateBuilder(new string[] { });
@@ -79,15 +101,37 @@ public class DocsRazorator
                     mvcBuilder.AddApplicationPart(assembly);
                 }
 
-                foreach (object obj in requisitors)
+                foreach (object obj in services)
                 {
-                    builder.Services.AddSingleton(obj.GetType(), op =>
+                    if(obj is KeyValuePair<Type, object> pair)
                     {
-                        return obj;
-                    });
+                        builder.Services.AddSingleton(pair.Key, op =>
+                        {
+                            return pair.Value;
+                        });
+                    }
+                    else
+                    {
+                        builder.Services.AddSingleton(obj.GetType(), op =>
+                        {
+                            return obj;
+                        });
+                    }
                 }
 
                 app = builder.Build();
+
+                app.UseExceptionHandler(eapp =>
+                {
+                    eapp.Run(async context =>
+                    {
+                        var exceptionHandlerPathFeature =
+                            context.Features.Get<IExceptionHandlerPathFeature>();
+
+                        razorPageException = exceptionHandlerPathFeature?.Error;
+                        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+                    });
+                });
 
                 app.Use(async (context, next) =>
                 {
@@ -106,7 +150,7 @@ public class DocsRazorator
 
                 app.Lifetime.ApplicationStarted.Register(() =>
                 {
-                    manualReset.Set();
+                    appStartedGate.Set();
                 });
 
                 app.Urls.Clear();
@@ -118,21 +162,33 @@ public class DocsRazorator
                 }
                 catch (IOException ex) { }
             }
-            manualReset.Set();
         });
 
-        manualReset.Wait();
+        appStartedGate.Wait();
+
+        if (loadTask.IsFaulted)
+        {
+            throw loadTask.Exception;
+        }
         _client.BaseAddress = new Uri(app.Urls.First());
         _client.DefaultRequestHeaders.Add(SecretWordHeader, secretWord);
         foreach (string request in requests)
         {
+            razorPageException = null;
+
             HttpRequestMessage requestMessage = new HttpRequestMessage(HttpMethod.Get, request);
 
             HttpResponseMessage response = await _client.SendAsync(requestMessage);
-            if (response.IsSuccessStatusCode)
+
+            if(razorPageException is { })
             {
-                yield return new KeyValuePair<string, string>(request, await response.Content.ReadAsStringAsync());
+                yield return new KeyValuePair<string, object>(request, razorPageException);
             }
+            else if (response.IsSuccessStatusCode)
+            {
+                yield return new KeyValuePair<string, object>(request, await response.Content.ReadAsStringAsync());
+            }
+            
         }
         await app.StopAsync();
 
