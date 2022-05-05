@@ -138,7 +138,7 @@ public class Generator
                     if (!context.Request.Headers.ContainsKey(SecretWordHeader) || !context.Request.Headers[SecretWordHeader].Contains(secretWord))
                     {
                         context.Response.StatusCode = StatusCodes.Status403Forbidden;
-                        await context.Response.WriteAsync("");
+                        await context.Response.WriteAsync(String.Empty);
                     }
                     else
                     {
