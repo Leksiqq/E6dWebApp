@@ -1,24 +1,22 @@
 ﻿using Microsoft.AspNetCore.Diagnostics;
-using System.Collections.Concurrent;
 using System.Net.NetworkInformation;
 using System.Reflection;
 
 namespace Net.Leksi.DocsRazorator;
 
-public class Generator
+public static class Generator
 {
     private const string SecretWordHeader = "X-Secret-Word";
     private const int MaxTcpPort = 65535;
     private const int StartTcpPort = 5000;
-    private readonly HttpClient _client = new HttpClient();
-    private readonly string secretWord = Guid.NewGuid().ToString();
 
-    public async IAsyncEnumerable<KeyValuePair<string, object>> Generate(IEnumerable<object> requisite, 
+    public static async IAsyncEnumerable<KeyValuePair<string, object>> Generate(IEnumerable<object> requisite, 
         IEnumerable<string> requests)
     {
-        ConcurrentQueue<KeyValuePair<string, string>> queue = new();
         ManualResetEventSlim appStartedGate = new();
         WebApplication app = null!;
+        HttpClient client = null!;
+        string secretWord = Guid.NewGuid().ToString();
 
         Exception? razorPageException = null;
 
@@ -39,14 +37,40 @@ public class Generator
                     }
 
                 }
-                else if (obj is KeyValuePair<Type, object> pair)
+                else if (obj is KeyValuePair<Type, Type> typeTypePair)
                 {
-                    Assembly assembly = pair.Value.GetType().Assembly;
+                    Assembly assembly = typeTypePair.Value.Assembly;
                     if (!assemblies.Contains(assembly))
                     {
                         assemblies.Add(assembly);
                     }
-                    if (services.Find(v => v is KeyValuePair<Type, object> p &&  p.Key == pair.Key && Object.ReferenceEquals(p.Value, pair.Value)) is null)
+                    if (services.Find(v => v is KeyValuePair<Type, object> p && p.Key == typeTypePair.Key 
+                        && Object.ReferenceEquals(p.Value, typeTypePair.Value)) is null)
+                    {
+                        services.Add(obj);
+                    }
+                }
+                else if (obj is KeyValuePair<Type, object> typeObjectPair)
+                {
+                    Assembly assembly = typeObjectPair.Value.GetType().Assembly;
+                    if (!assemblies.Contains(assembly))
+                    {
+                        assemblies.Add(assembly);
+                    }
+                    if (services.Find(v => v is KeyValuePair<Type, object> p && p.Key == typeObjectPair.Key 
+                        && Object.ReferenceEquals(p.Value, typeObjectPair.Value)) is null)
+                    {
+                        services.Add(obj);
+                    }
+                }
+                else if (obj is Type type)
+                {
+                    Assembly assembly = type.Assembly;
+                    if (!assemblies.Contains(assembly))
+                    {
+                        assemblies.Add(assembly);
+                    }
+                    if (!services.Contains(obj))
                     {
                         services.Add(obj);
                     }
@@ -103,15 +127,24 @@ public class Generator
 
                 foreach (object obj in services)
                 {
-                    if(obj is KeyValuePair<Type, object> pair)
+                    if(obj is KeyValuePair<Type, Type> typeTypePair)
                     {
-                        builder.Services.AddSingleton(pair.Key, op =>
+                            builder.Services.AddTransient(typeTypePair.Key, typeTypePair.Value);
+                    }
+                    else if (obj is KeyValuePair<Type, object> typeObjectPair)
+                    {
+                        builder.Services.AddSingleton(typeObjectPair.Key, op =>
                         {
-                            return pair.Value;
+                            return typeObjectPair.Value;
                         });
+                    }
+                    else if(obj is Type type)
+                    {
+                        builder.Services.AddTransient(type);
                     }
                     else
                     {
+                        
                         builder.Services.AddSingleton(obj.GetType(), op =>
                         {
                             return obj;
@@ -170,21 +203,22 @@ public class Generator
         {
             throw loadTask.Exception;
         }
-        _client.BaseAddress = new Uri(app.Urls.First());
-        _client.DefaultRequestHeaders.Add(SecretWordHeader, secretWord);
+        client = new HttpClient();
+        client.BaseAddress = new Uri(app.Urls.First());
+        client.DefaultRequestHeaders.Add(SecretWordHeader, secretWord);
         foreach (string request in requests)
         {
             razorPageException = null;
 
             HttpRequestMessage requestMessage = new HttpRequestMessage(HttpMethod.Get, request);
 
-            HttpResponseMessage response = await _client.SendAsync(requestMessage);
+            HttpResponseMessage response = await client.SendAsync(requestMessage);
 
             if(razorPageException is { })
             {
                 yield return new KeyValuePair<string, object>(request, razorPageException);
             }
-            else if (response.IsSuccessStatusCode)
+            else
             {
                 yield return new KeyValuePair<string, object>(request, await response.Content.ReadAsStringAsync());
             }
