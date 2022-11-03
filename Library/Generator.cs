@@ -88,19 +88,10 @@ public static class Generator
                     }
                 }
             }
+            port = 1024;
             while (true)
             {
-                IPGlobalProperties ipGlobalProperties = IPGlobalProperties.GetIPGlobalProperties();
-                int[] usedPorts = ipGlobalProperties.GetActiveTcpConnections()
-                        .Select(v => v.LocalEndPoint.Port).Where(v => v >= StartTcpPort).OrderBy(v => v).ToArray();
-                for (int i = 1; i < usedPorts.Length; ++i)
-                {
-                    if (usedPorts[i] > usedPorts[i - 1] + 1)
-                    {
-                        port = usedPorts[i] - 1;
-                        break;
-                    }
-                }
+                ++port;
                 if (port > MaxTcpPort)
                 {
                     try
@@ -163,6 +154,7 @@ public static class Generator
 
                         razorPageException = exceptionHandlerPathFeature?.Error;
                         context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+                        await Task.CompletedTask;
                     });
                 });
 
@@ -176,6 +168,10 @@ public static class Generator
                     else
                     {
                         await next.Invoke(context);
+                        if(context.Response.StatusCode != StatusCodes.Status200OK)
+                        {
+                            razorPageException = new Exception($"Page {context.Request.Path}{context.Request.QueryString} processing error. Code: {context.Response.StatusCode}");
+                        }
                     }
                 });
 
@@ -193,7 +189,9 @@ public static class Generator
                     app.Run();
                     break;
                 }
-                catch (IOException ex) { }
+                catch (IOException ex) {
+                    Console.WriteLine(ex);
+                }
             }
         });
 
