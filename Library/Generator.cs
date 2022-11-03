@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Diagnostics;
 using System.Net.NetworkInformation;
+using System.Net.Sockets;
 using System.Reflection;
 
 namespace Net.Leksi.DocsRazorator;
@@ -204,6 +205,7 @@ public static class Generator
         client = new HttpClient();
         client.BaseAddress = new Uri(app.Urls.First());
         client.DefaultRequestHeaders.Add(SecretWordHeader, secretWord);
+        client.Timeout = Timeout.InfiniteTimeSpan;
         foreach (string request in requests)
         {
             razorPageException = null;
