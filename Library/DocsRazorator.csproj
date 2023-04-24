@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+	<PropertyGroup>
+		<TargetFramework>net6.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<AssemblyName>Net.Leksi.DocsRazorator</AssemblyName>
+		<RootNamespace>Net.Leksi.DocsRazorator</RootNamespace>
+		<OutputType>Library</OutputType>
+		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+		<Authors>leksiq</Authors>
+    <IsPackable>true</IsPackable>
+	</PropertyGroup>
+
+</Project>
