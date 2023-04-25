@@ -4,8 +4,8 @@
 		<TargetFramework>net6.0</TargetFramework>
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
-		<AssemblyName>Net.Leksi.DocsRazorator</AssemblyName>
-		<RootNamespace>Net.Leksi.DocsRazorator</RootNamespace>
+		<AssemblyName>Net.Leksi.TextGenerator</AssemblyName>
+		<RootNamespace>Net.Leksi.TextGenerator</RootNamespace>
 		<OutputType>Library</OutputType>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 		<Authors>leksiq</Authors>
