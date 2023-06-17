@@ -1,114 +1,206 @@
 ﻿using Microsoft.AspNetCore.Diagnostics;
 using System.Reflection;
+using System.Text.RegularExpressions;
 
 namespace Net.Leksi.TextGenerator;
 
-public class Generator
+public class Generator: IDisposable
 {
-    public class Connector
+    public class Connector: IConnector
     {
         private readonly HttpClient _client;
+        private readonly Generator _generator;
+        private readonly string _id;
+        private int _serial = 0;
 
-        internal Connector(HttpClient client)
+        public bool IsConnected
         {
-            _client = client;
+            get 
+            { 
+                if(!_generator.IsRunning)
+                {
+                    return false;
+                }
+                _generator._appStartedGate.Wait();
+                return _generator.IsRunning;
+            }
         }
 
-        public HttpResponse Get(string path, object? parameters)
+        internal Connector(HttpClient client, Generator generator, string id)
         {
-            _client
+            _client = client;
+            _generator = generator;
+            _id = id;
+        }
+
+        public TextReader Get(string path, object? parameter = null)
+        {
+            HttpResponseMessage response = Send(new HttpRequestMessage(HttpMethod.Get, path), parameter);
+            EnsureSuccessStatusCode(response);
+            return new StreamReader(response.Content.ReadAsStream());
+        }
+
+        public async Task<TextReader> GetAsync(string path, object? parameter = null)
+        {
+            HttpResponseMessage response = await SendAsync(new HttpRequestMessage(HttpMethod.Get, path), parameter);
+            EnsureSuccessStatusCode(response);
+            return new StreamReader(response.Content.ReadAsStream());
+        }
+
+        public HttpResponseMessage Send(HttpRequestMessage request, object? parameter = null)
+        {
+            PrepareRequest(request, parameter);
+            return _client.Send(request);
+        }
+
+        public async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, object? parameter = null)
+        {
+            PrepareRequest(request, parameter);
+            return await _client.SendAsync(request);
+        }
+
+        private static void EnsureSuccessStatusCode(HttpResponseMessage response)
+        {
+            try
+            {
+                response.EnsureSuccessStatusCode();
+            }
+            catch (Exception e)
+            {
+                string message = new StreamReader(response.Content.ReadAsStream()).ReadToEnd();
+                if (!string.IsNullOrEmpty(message))
+                {
+                    throw new AggregateException(
+                        new Exception[] {
+                        e,
+                        new Exception(message)
+                        }
+                    );
+                }
+                throw;
+            }
+        }
+
+        private void PrepareRequest(HttpRequestMessage request, object? parameter)
+        {
+
+            if (!_generator.IsRunning)
+            {
+                throw new InvalidOperationException("Generator is not running!");
+            }
+            _generator._appStartedGate.Wait();
+            if (!_generator.IsRunning)
+            {
+                throw new InvalidOperationException("Generator is not running!");
+            }
+            string serial = Interlocked.Increment(ref _serial).ToString();
+            request.Headers.Add(s_serialHeaderName, serial);
+            request.Headers.Add(s_connectorIdHeaderName, _id);
+            if (parameter is { })
+            {
+                _generator._parameters[_id].Add(serial, parameter);
+            }
         }
     }
 
-    private const string SecretWordHeader = "X-Connector-Id";
-    private const int MaxTcpPort = 65535;
-    private const int StartTcpPort = 5000;
+    private const string s_connectorIdHeaderName = "X-Connector-Id";
+    private const string s_serialHeaderName = "X-Serial-Number";
+    private const int s_maxTcpPort = 65535;
+    private const int s_startTcpPort = 5000;
 
     private readonly List<Assembly> _assemblies = new();
-    private readonly List<object> _services = new();
+    private readonly Dictionary<Type, Tuple<object, ServiceLifetime>> _services = new();
     private readonly ManualResetEventSlim _appStartedGate = new();
     private readonly Dictionary<string, Connector> _connectors = new();
+    private readonly Dictionary<string, Dictionary<string, object>> _parameters = new();
 
-    private bool _running = false;
-    private string _secretWord = Guid.NewGuid().ToString();
     private WebApplication _app = null!;
 
-    public void AddRequisite(object requisiteItem)
-    {
-        if (requisiteItem is Assembly asm)
-        {
-            if (!_assemblies.Contains(asm))
-            {
-                _assemblies.Add(asm);
-            }
+    public bool IsRunning { get; private set; } = false;
 
-        }
-        else if (requisiteItem is KeyValuePair<Type, Type> typeTypePair)
+    public Generator()
+    {
+        _appStartedGate.Reset();
+    }
+
+    public void AddAssembly(Assembly assembly)
+    {
+        if (!_assemblies.Contains(assembly))
         {
-            Assembly assembly = typeTypePair.Value.Assembly;
-            if (!_assemblies.Contains(assembly))
-            {
-                _assemblies.Add(assembly);
-            }
-            if (_services.Find(v => v is KeyValuePair<Type, object> p && p.Key == typeTypePair.Key
-                && Object.ReferenceEquals(p.Value, typeTypePair.Value)) is null)
-            {
-                _services.Add(requisiteItem);
-            }
+            _assemblies.Add(assembly);
         }
-        else if (requisiteItem is KeyValuePair<Type, object> typeObjectPair)
+    }
+
+    public void AddService(Type? serviceType, object implementation, ServiceLifetime lifetime = ServiceLifetime.Transient)
+    {
+        if(implementation is null)
         {
-            Assembly assembly = typeObjectPair.Value.GetType().Assembly;
-            if (!_assemblies.Contains(assembly))
-            {
-                _assemblies.Add(assembly);
-            }
-            if (_services.Find(v => v is KeyValuePair<Type, object> p && p.Key == typeObjectPair.Key
-                && Object.ReferenceEquals(p.Value, typeObjectPair.Value)) is null)
-            {
-                _services.Add(requisiteItem);
-            }
+            throw new ArgumentNullException(nameof(implementation));
         }
-        else if (requisiteItem is Type type)
+        Assembly assembly;
+        if(serviceType is null)
         {
-            Assembly assembly = type.Assembly;
-            if (!_assemblies.Contains(assembly))
-            {
-                _assemblies.Add(assembly);
-            }
-            if (!_services.Contains(requisiteItem))
-            {
-                _services.Add(requisiteItem);
-            }
+            serviceType = implementation.GetType();
+        }
+        if(implementation is Type type)
+        {
+            assembly = type.Assembly;
+        }
+        else if(implementation is Func<IServiceProvider, object> implementationMethod)
+        {
+            assembly = implementationMethod.GetMethodInfo().ReturnType.Assembly;
         }
         else
         {
-            Assembly assembly = requisiteItem.GetType().Assembly;
-            if (!_assemblies.Contains(assembly))
-            {
-                _assemblies.Add(assembly);
-            }
-            if (!_services.Contains(requisiteItem))
-            {
-                _services.Add(requisiteItem);
-            }
+            assembly = implementation.GetType().Assembly;
         }
+        if (!_assemblies.Contains(assembly))
+        {
+            _assemblies.Add(assembly);
+        }
+        if (!_services.ContainsKey(serviceType))
+        {
+            _services.Add(serviceType, new Tuple<object, ServiceLifetime>(implementation, lifetime));
+        }
+    }
+
+    public void AddService<TService, TImplementation>(ServiceLifetime lifetime = ServiceLifetime.Transient)
+    {
+        AddService(typeof(TService), typeof(TImplementation), lifetime);
+    }
+
+    public void AddService(Type serviceType, ServiceLifetime lifetime = ServiceLifetime.Transient)
+    {
+        AddService(serviceType, serviceType, lifetime);
+    }
+
+    public void AddService<TService>(ServiceLifetime lifetime = ServiceLifetime.Transient)
+    {
+        AddService(typeof(TService), typeof(TService), lifetime);
+    }
+
+    public void AddService<TService>(object obj, ServiceLifetime lifetime = ServiceLifetime.Transient)
+    {
+        AddService(typeof(TService), obj, lifetime);
+    }
+
+    public void AddService(object obj, ServiceLifetime lifetime = ServiceLifetime.Transient)
+    {
+
+        AddService(null, obj, lifetime);
     }
 
     public void Start()
     {
-        _appStartedGate.Reset();
-
+        IsRunning = true;
         Task loadTask = Task.Run(() =>
         {
-            Exception? razorPageException = null;
+            int port = s_startTcpPort - 1;
 
-            int port = StartTcpPort - 1;
             while (true)
             {
-                _secretWord = Guid.NewGuid().ToString();
                 ++port;
-                if (port > MaxTcpPort)
+                if (port > s_maxTcpPort)
                 {
                     try
                     {
@@ -132,32 +224,23 @@ public class Generator
                     mvcBuilder.AddApplicationPart(assembly);
                 }
 
-                foreach (object obj in _services)
+                foreach (KeyValuePair<Type, Tuple<object, ServiceLifetime>> entry in _services)
                 {
-                    if (obj is KeyValuePair<Type, Type> typeTypePair)
+                    if (entry.Value.Item1  is Type type)
                     {
-                        builder.Services.AddTransient(typeTypePair.Key, typeTypePair.Value);
+                        builder.Services.Add(new ServiceDescriptor(entry.Key, type, entry.Value.Item2));
                     }
-                    else if (obj is KeyValuePair<Type, object> typeObjectPair)
+                    else if (entry.Value.Item1 is Func<IServiceProvider, object> method)
                     {
-                        builder.Services.AddSingleton(typeObjectPair.Key, op =>
-                        {
-                            return typeObjectPair.Value;
-                        });
-                    }
-                    else if (obj is Type type)
-                    {
-                        builder.Services.AddTransient(type);
+                        builder.Services.Add(new ServiceDescriptor(entry.Key, method, entry.Value.Item2));
                     }
                     else
                     {
-
-                        builder.Services.AddSingleton(obj.GetType(), op =>
-                        {
-                            return obj;
-                        });
+                        builder.Services.Add(new ServiceDescriptor(entry.Key, entry.Value.Item1));
                     }
                 }
+
+                builder.Services.AddScoped<RequestParameterHolder>();
 
                 _app = builder.Build();
 
@@ -168,18 +251,24 @@ public class Generator
                         var exceptionHandlerPathFeature =
                             context.Features.Get<IExceptionHandlerPathFeature>();
 
-                        razorPageException = exceptionHandlerPathFeature?.Error;
                         context.Response.StatusCode = StatusCodes.Status500InternalServerError;
-                        await Task.CompletedTask;
+                        if(exceptionHandlerPathFeature?.Error is Exception exception)
+                        {
+                            await context.Response.WriteAsync($"{exception.Message}\n{exception.StackTrace}");
+                        }
+                        else
+                        {
+                            await Task.CompletedTask;
+                        }
                     });
                 });
 
                 _app.Use(async (context, next) =>
                 {
                     if (
-                        !context.Request.Headers.ContainsKey(SecretWordHeader) 
-                        || context.Request.Headers[SecretWordHeader].Count == 0
-                        || !_connectors.ContainsKey(context.Request.Headers[SecretWordHeader][0])
+                        !context.Request.Headers.ContainsKey(s_connectorIdHeaderName) 
+                        || context.Request.Headers[s_connectorIdHeaderName].Count == 0
+                        || !_connectors.ContainsKey(context.Request.Headers[s_connectorIdHeaderName][0])
                     )
                     {
                         context.Response.StatusCode = StatusCodes.Status403Forbidden;
@@ -187,11 +276,17 @@ public class Generator
                     }
                     else
                     {
-                        await next.Invoke(context);
-                        if (context.Response.StatusCode != StatusCodes.Status200OK)
+                        string connectorId = context.Request.Headers[s_connectorIdHeaderName][0];
+                        string serial = context.Request.Headers[s_serialHeaderName][0];
+
+                        if (_parameters[connectorId].TryGetValue(serial, out object? parameter))
                         {
-                            razorPageException = new Exception($"Page {context.Request.Path}{context.Request.QueryString} processing error. Code: {context.Response.StatusCode}");
+                            context.RequestServices.GetRequiredService<RequestParameterHolder>().Parameter = parameter;
                         }
+
+                        await next.Invoke(context);
+
+                        _parameters[connectorId].Remove(serial);
                     }
                 });
 
@@ -209,10 +304,7 @@ public class Generator
                     _app.Run();
                     break;
                 }
-                catch (IOException ex)
-                {
-                    Console.WriteLine(ex);
-                }
+                catch (IOException) { }
             }
         });
 
@@ -225,229 +317,48 @@ public class Generator
 
     }
 
-    public Connector GetConnector()
+    public void Stop()
     {
-        _appStartedGate.Wait();
-        HttpClient client = new();
-        client.BaseAddress = new Uri(_app.Urls.First());
-        client.DefaultRequestHeaders.Add(SecretWordHeader, _secretWord);
-        client.Timeout = Timeout.InfiniteTimeSpan;
-        return new Connector(client);
+        _appStartedGate.Reset();
+        IsRunning = false;
+        _appStartedGate.Set();
+        _appStartedGate.Reset();
+        Task.Run(async () =>
+        {
+            await _app.StopAsync();
+        }).Wait();
     }
 
-    public static async IAsyncEnumerable<KeyValuePair<string, object>> Generate(IEnumerable<object> requisite, 
-        IEnumerable<string> requests)
+    public IConnector GetConnector()
     {
-        ManualResetEventSlim appStartedGate = new();
-        WebApplication app = null!;
-        HttpClient client = null!;
-
-        Exception? razorPageException = null;
-
-        appStartedGate.Reset();
-
-        Task loadTask = Task.Run(() =>
+        if (!IsRunning)
         {
-            int port = MaxTcpPort + 1;
-            List<Assembly> assemblies = new();
-            List<object> services = new();
-            foreach (object obj in requisite)
-            {
-                if (obj is Assembly asm)
-                {
-                    if (!assemblies.Contains(asm))
-                    {
-                        assemblies.Add(asm);
-                    }
-
-                }
-                else if (obj is KeyValuePair<Type, Type> typeTypePair)
-                {
-                    Assembly assembly = typeTypePair.Value.Assembly;
-                    if (!assemblies.Contains(assembly))
-                    {
-                        assemblies.Add(assembly);
-                    }
-                    if (services.Find(v => v is KeyValuePair<Type, object> p && p.Key == typeTypePair.Key 
-                        && Object.ReferenceEquals(p.Value, typeTypePair.Value)) is null)
-                    {
-                        services.Add(obj);
-                    }
-                }
-                else if (obj is KeyValuePair<Type, object> typeObjectPair)
-                {
-                    Assembly assembly = typeObjectPair.Value.GetType().Assembly;
-                    if (!assemblies.Contains(assembly))
-                    {
-                        assemblies.Add(assembly);
-                    }
-                    if (services.Find(v => v is KeyValuePair<Type, object> p && p.Key == typeObjectPair.Key 
-                        && Object.ReferenceEquals(p.Value, typeObjectPair.Value)) is null)
-                    {
-                        services.Add(obj);
-                    }
-                }
-                else if (obj is Type type)
-                {
-                    Assembly assembly = type.Assembly;
-                    if (!assemblies.Contains(assembly))
-                    {
-                        assemblies.Add(assembly);
-                    }
-                    if (!services.Contains(obj))
-                    {
-                        services.Add(obj);
-                    }
-                }
-                else
-                {
-                    Assembly assembly = obj.GetType().Assembly;
-                    if (!assemblies.Contains(assembly))
-                    {
-                        assemblies.Add(assembly);
-                    }
-                    if (!services.Contains(obj))
-                    {
-                        services.Add(obj);
-                    }
-                }
-            }
-            port = 1024;
-            while (true)
-            {
-                ++port;
-                if (port > MaxTcpPort)
-                {
-                    try
-                    {
-                        throw new Exception("No TCP port is available.");
-                    }
-                    finally
-                    {
-                        appStartedGate.Set();
-                    }
-                }
-
-                WebApplicationBuilder builder = WebApplication.CreateBuilder(new string[] { });
-
-                builder.Logging.ClearProviders();
-
-                builder.Services.AddRazorPages();
-
-                IMvcBuilder mvcBuilder = builder.Services.AddControllersWithViews();
-                foreach (Assembly assembly in assemblies)
-                {
-                    mvcBuilder.AddApplicationPart(assembly);
-                }
-
-                foreach (object obj in services)
-                {
-                    if(obj is KeyValuePair<Type, Type> typeTypePair)
-                    {
-                            builder.Services.AddTransient(typeTypePair.Key, typeTypePair.Value);
-                    }
-                    else if (obj is KeyValuePair<Type, object> typeObjectPair)
-                    {
-                        builder.Services.AddSingleton(typeObjectPair.Key, op =>
-                        {
-                            return typeObjectPair.Value;
-                        });
-                    }
-                    else if(obj is Type type)
-                    {
-                        builder.Services.AddTransient(type);
-                    }
-                    else
-                    {
-                        
-                        builder.Services.AddSingleton(obj.GetType(), op =>
-                        {
-                            return obj;
-                        });
-                    }
-                }
-
-                app = builder.Build();
-
-                app.UseExceptionHandler(eapp =>
-                {
-                    eapp.Run(async context =>
-                    {
-                        var exceptionHandlerPathFeature =
-                            context.Features.Get<IExceptionHandlerPathFeature>();
-
-                        razorPageException = exceptionHandlerPathFeature?.Error;
-                        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
-                        await Task.CompletedTask;
-                    });
-                });
-
-                app.Use(async (context, next) =>
-                {
-                    if (!context.Request.Headers.ContainsKey(SecretWordHeader) || !context.Request.Headers[SecretWordHeader].Contains(_secretWord))
-                    {
-                        context.Response.StatusCode = StatusCodes.Status403Forbidden;
-                        await context.Response.WriteAsync(String.Empty);
-                    }
-                    else
-                    {
-                        await next.Invoke(context);
-                        if(context.Response.StatusCode != StatusCodes.Status200OK)
-                        {
-                            razorPageException = new Exception($"Page {context.Request.Path}{context.Request.QueryString} processing error. Code: {context.Response.StatusCode}");
-                        }
-                    }
-                });
-
-                app.MapRazorPages();
-
-                app.Lifetime.ApplicationStarted.Register(() =>
-                {
-                    appStartedGate.Set();
-                });
-
-                app.Urls.Clear();
-                app.Urls.Add($"http://localhost:{port}");
-                try
-                {
-                    app.Run();
-                    break;
-                }
-                catch (IOException ex) {
-                    Console.WriteLine(ex);
-                }
-            }
-        });
-
-        appStartedGate.Wait();
-
-        if (loadTask.IsFaulted)
-        {
-            throw loadTask.Exception;
+            throw new InvalidOperationException("Generator is not started!");
         }
-        client = new HttpClient();
-        client.BaseAddress = new Uri(app.Urls.First());
-        client.DefaultRequestHeaders.Add(SecretWordHeader, _secretWord);
-        client.Timeout = Timeout.InfiniteTimeSpan;
-        foreach (string request in requests)
+        _appStartedGate.Wait();
+        if (!IsRunning)
         {
-            razorPageException = null;
-
-            HttpRequestMessage requestMessage = new HttpRequestMessage(HttpMethod.Get, request);
-
-            HttpResponseMessage response = await client.SendAsync(requestMessage);
-
-            if(razorPageException is { })
-            {
-                yield return new KeyValuePair<string, object>(request, razorPageException);
-            }
-            else
-            {
-                yield return new KeyValuePair<string, object>(request, await response.Content.ReadAsStringAsync());
-            }
-            
+            throw new InvalidOperationException("Generator is not started!");
         }
-        await app.StopAsync();
+        HttpClient client = new();
+        client.BaseAddress = new Uri(_app.Urls.First());
+        string connectorId = Guid.NewGuid().ToString();
+        lock (_connectors)
+        {
+            while (_connectors.ContainsKey(connectorId))
+            {
+                connectorId = Guid.NewGuid().ToString();
+            }
+            client.Timeout = Timeout.InfiniteTimeSpan;
+            _parameters.Add(connectorId, new Dictionary<string, object>());
+            Connector result = new Connector(client, this, connectorId);
+            _connectors.Add(connectorId, result);
+            return result;
+        }
+    }
 
+    public void Dispose()
+    {
+        Stop();
     }
 }
