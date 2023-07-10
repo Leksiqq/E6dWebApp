@@ -6,5 +6,23 @@
 		<AssemblyName>Net.Leksi.E6dWebApp</AssemblyName>
 		<RootNamespace>Net.Leksi.E6dWebApp</RootNamespace>
 		<OutputType>Library</OutputType>
+		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+		<Title>Embedded Web Application</Title>
+		<Authors>leksiq</Authors>
+		<Copyright>Алексей Юрьевич Захаров &lt;leksi@leksi.net&gt;, 2023</Copyright>
+		<PackageProjectUrl>https://github.com/Leksiqq/E6dWebApp/wiki</PackageProjectUrl>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<RepositoryUrl>https://github.com/Leksiqq/E6dWebApp</RepositoryUrl>
+		<IsPackable>true</IsPackable>
 	</PropertyGroup>
+  	<Target Name="CopyPackage" AfterTargets="Pack">
+    		<Move SourceFiles="$(OutputPath)..\$(PackageId).$(PackageVersion).nupkg" DestinationFolder="W:\C#\nuget.local" />
+  	</Target>
+
+	<ItemGroup>
+	  <None Include="..\README.md">
+	    <Pack>True</Pack>
+	    <PackagePath>\</PackagePath>
+	  </None>
+	</ItemGroup>
 </Project>

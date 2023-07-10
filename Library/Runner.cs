@@ -1,34 +1,41 @@
 ﻿using Microsoft.AspNetCore.Diagnostics;
 using System.Reflection;
+using System.Text;
+using static Net.Leksi.E6dWebApp.Runner;
 
 namespace Net.Leksi.E6dWebApp;
 
-public abstract class Runner: IDisposable
+public abstract class Runner : IDisposable
 {
-    public class Connector: IConnector
+    private class OneTimeUrlRequest
+    {
+        internal object? Parameter { get; set; }
+    }
+
+    public class Connector : IConnector
     {
         private readonly HttpClient _client;
-        private readonly Runner _generator;
+        private readonly Runner _runner;
         private readonly string _id;
         private int _serial = 0;
 
         public bool IsConnected
         {
-            get 
-            { 
-                if(!_generator.IsRunning)
+            get
+            {
+                if (!_runner.IsRunning)
                 {
                     return false;
                 }
-                _generator._appStartedGate.Wait();
-                return _generator.IsRunning;
+                _runner._appStartedGate.Wait();
+                return _runner.IsRunning;
             }
         }
 
         internal Connector(HttpClient client, Runner generator, string id)
         {
             _client = client;
-            _generator = generator;
+            _runner = generator;
             _id = id;
         }
 
@@ -39,23 +46,15 @@ public abstract class Runner: IDisposable
             return new StreamReader(response.Content.ReadAsStream());
         }
 
-        public async Task<TextReader> GetAsync(string path, object? parameter = null)
-        {
-            HttpResponseMessage response = await SendAsync(new HttpRequestMessage(HttpMethod.Get, path), parameter);
-            EnsureSuccessStatusCode(response);
-            return new StreamReader(response.Content.ReadAsStream());
-        }
-
         public HttpResponseMessage Send(HttpRequestMessage request, object? parameter = null)
         {
             PrepareRequest(request, parameter);
             return _client.Send(request);
         }
 
-        public async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, object? parameter = null)
+        public string GetOneTimeUrl(string path, object? parameter = null)
         {
-            PrepareRequest(request, parameter);
-            return await _client.SendAsync(request);
+            return Get(path, new OneTimeUrlRequest { Parameter = parameter }).ReadToEnd();
         }
 
         private static void EnsureSuccessStatusCode(HttpResponseMessage response)
@@ -83,12 +82,12 @@ public abstract class Runner: IDisposable
         private void PrepareRequest(HttpRequestMessage request, object? parameter)
         {
 
-            if (!_generator.IsRunning)
+            if (!_runner.IsRunning)
             {
                 throw new InvalidOperationException("Runner is not running!");
             }
-            _generator._appStartedGate.Wait();
-            if (!_generator.IsRunning)
+            _runner._appStartedGate.Wait();
+            if (!_runner.IsRunning)
             {
                 throw new InvalidOperationException("Runner is not running!");
             }
@@ -97,7 +96,7 @@ public abstract class Runner: IDisposable
             request.Headers.Add(s_connectorIdHeaderName, _id);
             if (parameter is { })
             {
-                _generator._parameters[_id].Add(serial, parameter);
+                _runner._parameters[_id].Add(serial, new WeakReference(parameter));
             }
         }
     }
@@ -111,8 +110,8 @@ public abstract class Runner: IDisposable
     private readonly Dictionary<Type, Tuple<object, ServiceLifetime>> _services = new();
     private readonly ManualResetEventSlim _appStartedGate = new();
     private readonly Dictionary<string, Connector> _connectors = new();
-    private readonly Dictionary<string, Dictionary<string, object>> _parameters = new();
-
+    private readonly Dictionary<string, Dictionary<string, WeakReference>> _parameters = new();
+    private readonly Dictionary<string, Dictionary<string, Tuple<string, WeakReference?>>> _authorizedCookies = new();
     private WebApplication _app = null!;
 
     public bool IsRunning { get; private set; } = false;
@@ -138,20 +137,20 @@ public abstract class Runner: IDisposable
 
     public void AddService(Type? serviceType, object implementation, ServiceLifetime lifetime = ServiceLifetime.Transient)
     {
-        if(implementation is null)
+        if (implementation is null)
         {
             throw new ArgumentNullException(nameof(implementation));
         }
         Assembly assembly;
-        if(serviceType is null)
+        if (serviceType is null)
         {
             serviceType = implementation.GetType();
         }
-        if(implementation is Type type)
+        if (implementation is Type type)
         {
             assembly = type.Assembly;
         }
-        else if(implementation is Func<IServiceProvider, object> implementationMethod)
+        else if (implementation is Func<IServiceProvider, object> implementationMethod)
         {
             assembly = implementationMethod.GetMethodInfo().ReturnType.Assembly;
         }
@@ -221,7 +220,7 @@ public abstract class Runner: IDisposable
 
                 foreach (KeyValuePair<Type, Tuple<object, ServiceLifetime>> entry in _services)
                 {
-                    if (entry.Value.Item1  is Type type)
+                    if (entry.Value.Item1 is Type type)
                     {
                         builder.Services.Add(new ServiceDescriptor(entry.Key, type, entry.Value.Item2));
                     }
@@ -235,7 +234,7 @@ public abstract class Runner: IDisposable
                     }
                 }
 
-                builder.Services.AddScoped<RequestParameterHolder>();
+                builder.Services.AddScoped<RequestParameter>();
 
                 _app = builder.Build();
 
@@ -247,7 +246,7 @@ public abstract class Runner: IDisposable
                             context.Features.Get<IExceptionHandlerPathFeature>();
 
                         context.Response.StatusCode = StatusCodes.Status500InternalServerError;
-                        if(exceptionHandlerPathFeature?.Error is Exception exception)
+                        if (exceptionHandlerPathFeature?.Error is Exception exception)
                         {
                             OnException(exception);
                             await context.Response.WriteAsync($"{exception.Message}\n{exception.StackTrace}");
@@ -261,28 +260,88 @@ public abstract class Runner: IDisposable
 
                 _app.Use(async (context, next) =>
                 {
-                    if (
-                        !context.Request.Headers.ContainsKey(s_connectorIdHeaderName) 
-                        || context.Request.Headers[s_connectorIdHeaderName].Count == 0
-                        || !_connectors.ContainsKey(context.Request.Headers[s_connectorIdHeaderName][0])
-                    )
+                    string? selectorKey = null;
+                    bool hasHeader = context.Request.Headers.ContainsKey(s_connectorIdHeaderName)
+                        && context.Request.Headers[s_connectorIdHeaderName].Any()
+                        && _connectors.ContainsKey(context.Request.Headers[s_connectorIdHeaderName][0]);
+                    bool hasQuery = !hasHeader
+                        && (selectorKey = context.Request.Query
+                            .Where(q => _authorizedCookies.TryGetValue(q.Value, out var dict) && dict.ContainsKey(q.Key))
+                            .Select(q => q.Key)
+                            .FirstOrDefault()) is { };
+
+                    bool hasCookie = !hasHeader && !hasQuery
+                        && (selectorKey = context.Request.Cookies.Where(q => _authorizedCookies.TryGetValue(q.Value, out var dict) && dict.ContainsKey(q.Key))
+                            .Select(q => q.Key)
+                            .FirstOrDefault()) is { };
+                    if (hasHeader || hasQuery || hasCookie)
                     {
+                        string connectorId;
+                        if (hasHeader)
+                        {
+                            string serial = context.Request.Headers[s_serialHeaderName][0];
+
+                            connectorId = context.Request.Headers[s_connectorIdHeaderName][0];
+
+                            if (_parameters[connectorId].TryGetValue(serial, out WeakReference? wr) && wr.IsAlive)
+                            {
+                                if (wr.Target is OneTimeUrlRequest oneTimeUrlRequest)
+                                {
+                                    await context.Response.WriteAsync(ProcessOneTimeUrlRequest(context.Request, oneTimeUrlRequest.Parameter));
+                                    return;
+                                }
+                                context.RequestServices.GetRequiredService<RequestParameter>().Parameter = wr.Target;
+                            }
+                            await next.Invoke(context);
+
+                            _parameters[connectorId].Remove(serial);
+
+                            return;
+                        }
+                        connectorId = hasQuery ? context.Request.Query[selectorKey!] : context.Request.Cookies[selectorKey!]!;
+                        string queryString;
+                        if (hasCookie)
+                        {
+                            queryString = context.Request.QueryString.Value ?? string.Empty;
+                        }
+                        else if(context.Request.Query.Count == 1)
+                        {
+                            queryString = string.Empty;
+                        }
+                        else
+                        {
+                            queryString = context.Request.QueryString.Value!.Replace($"&{selectorKey}={connectorId}", string.Empty);
+                        }
+                        if (
+                            _authorizedCookies[connectorId].TryGetValue(selectorKey!, out Tuple<string, WeakReference?>? tuple)
+                            && tuple.Item1.Equals($"{context.Request.Scheme}://{context.Request.Host}{context.Request.Path}{queryString}")
+                        )
+                        {
+                            if (tuple.Item2 is WeakReference wr1 && wr1.IsAlive)
+                            {
+                                context.RequestServices.GetRequiredService<RequestParameter>().Parameter = wr1.Target;
+                            }
+                            string? oldCookie = context.Request.Cookies
+                                .Where(q => q.Value.Equals(connectorId) && _authorizedCookies.TryGetValue(q.Value, out var dict) && dict.ContainsKey(q.Key))
+                                .Select(q => q.Key)
+                                .FirstOrDefault();
+
+                            if (
+                                oldCookie is { }
+                                && _authorizedCookies[connectorId].TryGetValue(oldCookie!, out Tuple<string, WeakReference?>? tuple1)
+                                && tuple1.Item1.Equals($"{context.Request.Scheme}://{context.Request.Host}{context.Request.Path}{context.Request.QueryString}")
+                            )
+                            {
+                                _authorizedCookies[connectorId].Remove(oldCookie);
+                            }
+
+                            context.Response.Cookies.Append(selectorKey!, connectorId);
+                            await next.Invoke(context);
+                            return;
+                        }
                         context.Response.StatusCode = StatusCodes.Status403Forbidden;
                         await context.Response.WriteAsync(String.Empty);
-                    }
-                    else
-                    {
-                        string connectorId = context.Request.Headers[s_connectorIdHeaderName][0];
-                        string serial = context.Request.Headers[s_serialHeaderName][0];
-
-                        if (_parameters[connectorId].TryGetValue(serial, out object? parameter))
-                        {
-                            context.RequestServices.GetRequiredService<RequestParameterHolder>().Parameter = parameter;
-                        }
-
-                        await next.Invoke(context);
-
-                        _parameters[connectorId].Remove(serial);
+                        return;
                     }
                 });
 
@@ -311,6 +370,28 @@ public abstract class Runner: IDisposable
             throw loadTask.Exception ?? new Exception("Unknown");
         }
 
+    }
+
+    private string ProcessOneTimeUrlRequest(HttpRequest request, object? parameter)
+    {
+        StringBuilder sb = new();
+        sb.Append(request.Scheme).Append("://").Append(request.Host).Append(request.Path).Append(request.QueryString);
+        string sourceUrl = sb.ToString();
+        string oneTimeCode = string.Empty;
+        lock (_authorizedCookies[request.Headers[s_connectorIdHeaderName][0]])
+        {
+            do
+            {
+                oneTimeCode = Guid.NewGuid().ToString();
+            }
+            while (request.Query.TryGetValue(oneTimeCode, out _) || _authorizedCookies[request.Headers[s_connectorIdHeaderName][0]].ContainsKey(oneTimeCode));
+            _authorizedCookies[request.Headers[s_connectorIdHeaderName][0]].Add(
+                oneTimeCode,
+                new Tuple<string, WeakReference?>(sourceUrl, parameter is { } ? new WeakReference(parameter) : null)
+            );
+        }
+        sb.Append(request.Query.Any() ? '&' : '?').Append(oneTimeCode).Append('=').Append(request.Headers[s_connectorIdHeaderName][0]);
+        return sb.ToString();
     }
 
     public void Stop()
@@ -346,7 +427,8 @@ public abstract class Runner: IDisposable
                 connectorId = Guid.NewGuid().ToString();
             }
             client.Timeout = Timeout.InfiniteTimeSpan;
-            _parameters.Add(connectorId, new Dictionary<string, object>());
+            _parameters.Add(connectorId, new Dictionary<string, WeakReference>());
+            _authorizedCookies.Add(connectorId, new Dictionary<string, Tuple<string, WeakReference?>>());
             Connector result = new Connector(client, this, connectorId);
             _connectors.Add(connectorId, result);
             return result;
