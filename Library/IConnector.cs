@@ -1,4 +1,4 @@
-﻿namespace Net.Leksi.TextGenerator;
+﻿namespace Net.Leksi.E6dWebApp;
 
 public interface IConnector
 {
