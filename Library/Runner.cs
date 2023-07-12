@@ -227,35 +227,41 @@ public abstract class Runner : IDisposable
                         }
                         if (
                             _authorizedCookies[connectorId].TryGetValue(selectorKey!, out Tuple<string, WeakReference?>? tuple)
-                            && tuple.Item1.Equals($"{context.Request.Scheme}://{context.Request.Host}{context.Request.Path}{queryString}")
                         )
                         {
                             if (tuple.Item2 is WeakReference wr1 && wr1.IsAlive)
                             {
                                 context.RequestServices.GetRequiredService<RequestParameter>().Parameter = wr1.Target;
                             }
-                            string? oldCookie = context.Request.Cookies
-                                .Where(q => q.Value.Equals(connectorId) && _authorizedCookies.TryGetValue(q.Value, out var dict) && dict.ContainsKey(q.Key))
-                                .Select(q => q.Key)
-                                .FirstOrDefault();
-
-                            if (
-                                oldCookie is { }
-                                && _authorizedCookies[connectorId].TryGetValue(oldCookie!, out Tuple<string, WeakReference?>? tuple1)
-                                && tuple1.Item1.Equals($"{context.Request.Scheme}://{context.Request.Host}{context.Request.Path}{context.Request.QueryString}")
-                            )
+                            if (hasQuery)
                             {
-                                _authorizedCookies[connectorId].Remove(oldCookie);
-                            }
+                                string? oldCookie = context.Request.Cookies
+                                    .Where(q => q.Value.Equals(connectorId) && _authorizedCookies.TryGetValue(q.Value, out var dict) && dict.ContainsKey(q.Key))
+                                    .Select(q => q.Key)
+                                    .FirstOrDefault();
 
-                            context.Response.Cookies.Append(selectorKey!, connectorId);
-                            await next.Invoke(context);
+                                if (
+                                    oldCookie is { }
+                                    && _authorizedCookies[connectorId].TryGetValue(oldCookie!, out Tuple<string, WeakReference?>? tuple1)
+                                    && tuple1.Item1.Equals($"{context.Request.Scheme}://{context.Request.Host}{context.Request.Path}{context.Request.QueryString}")
+                                )
+                                {
+                                    _authorizedCookies[connectorId].Remove(oldCookie);
+                                }
+
+                                context.Response.Cookies.Append(selectorKey!, connectorId);
+                                context.Response.StatusCode = StatusCodes.Status307TemporaryRedirect;
+                                context.Response.Headers.Add("Location", $"{context.Request.Scheme}://{context.Request.Host}{context.Request.Path}{queryString}");
+                            }
+                            else
+                            {
+                                await next.Invoke(context);
+                            }
                             return;
                         }
-                        context.Response.StatusCode = StatusCodes.Status403Forbidden;
-                        await context.Response.WriteAsync(String.Empty);
-                        return;
                     }
+                    context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                    await context.Response.WriteAsync(String.Empty);
                 });
 
                 ConfigureApplication(_app);
@@ -301,7 +307,6 @@ public abstract class Runner : IDisposable
                     {
                         await _app.StopAsync();
                     }).Wait();
-                    Console.WriteLine("Stopped");
                 }
             }
         }

@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>Net.Leksi.E6dWebApp.Demo.InterfaceImplementer</AssemblyName>
+    <RootNamespace>Net.Leksi.E6dWebApp.Demo.InterfaceImplementer</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Library\E6dWebAppDebug.csproj" />
+  </ItemGroup>
+
+</Project>

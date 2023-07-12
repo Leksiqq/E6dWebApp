@@ -1,18 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.6.33815.320
+VisualStudioVersion = 17.6.33829.357
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Элементы решения", "Элементы решения", "{917F4217-28DF-44AC-8BEA-CF28A63DABF6}"
-	ProjectSection(SolutionItems) = preProject
-		README.md = README.md
-	EndProjectSection
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "E6dWebAppDebug", "Library\E6dWebAppDebug.csproj", "{4B87FD14-758D-42D9-B676-04038839571F}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{914A0D02-5C32-424E-99CC-278EF8097BAE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HelloerDebug", "Demo\Helloer\HelloerDebug.csproj", "{3F1C2CD2-AA3B-4403-946B-3A948EAE487E}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Helloer", "Demo\Helloer\Helloer.csproj", "{B231FDB5-DF3F-425F-A224-1057A3E7182C}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "E6dWebAppDebug", "Library\E6dWebAppDebug.csproj", "{DDD57DFC-6E42-40FC-8C6C-A5ED47268FFC}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InterfaceImplementerDebug", "Demo\InterfaceImplementer\InterfaceImplementerDebug.csproj", "{D06F80DD-0E7A-4FA6-8738-B70C3793CCE5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -20,19 +15,23 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{B231FDB5-DF3F-425F-A224-1057A3E7182C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{B231FDB5-DF3F-425F-A224-1057A3E7182C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{B231FDB5-DF3F-425F-A224-1057A3E7182C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{B231FDB5-DF3F-425F-A224-1057A3E7182C}.Release|Any CPU.Build.0 = Release|Any CPU
-		{DDD57DFC-6E42-40FC-8C6C-A5ED47268FFC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{DDD57DFC-6E42-40FC-8C6C-A5ED47268FFC}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{DDD57DFC-6E42-40FC-8C6C-A5ED47268FFC}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{DDD57DFC-6E42-40FC-8C6C-A5ED47268FFC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4B87FD14-758D-42D9-B676-04038839571F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4B87FD14-758D-42D9-B676-04038839571F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4B87FD14-758D-42D9-B676-04038839571F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4B87FD14-758D-42D9-B676-04038839571F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3F1C2CD2-AA3B-4403-946B-3A948EAE487E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3F1C2CD2-AA3B-4403-946B-3A948EAE487E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3F1C2CD2-AA3B-4403-946B-3A948EAE487E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3F1C2CD2-AA3B-4403-946B-3A948EAE487E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D06F80DD-0E7A-4FA6-8738-B70C3793CCE5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D06F80DD-0E7A-4FA6-8738-B70C3793CCE5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D06F80DD-0E7A-4FA6-8738-B70C3793CCE5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D06F80DD-0E7A-4FA6-8738-B70C3793CCE5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {91D22C3A-FE94-441F-9532-A27F96050A7E}
+		SolutionGuid = {E75E6050-1021-4070-A63F-B5FF333F8560}
 	EndGlobalSection
 EndGlobal

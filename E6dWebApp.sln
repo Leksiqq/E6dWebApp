@@ -12,9 +12,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Элементы решен
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{914A0D02-5C32-424E-99CC-278EF8097BAE}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebApplication1", "Tests\WebApplication1\WebApplication1.csproj", "{1402E35F-8230-4900-B432-125E04AC277B}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Helloer", "Demo\Helloer\Helloer.csproj", "{B231FDB5-DF3F-425F-A224-1057A3E7182C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Helloer", "Demo\Helloer\Helloer.csproj", "{B231FDB5-DF3F-425F-A224-1057A3E7182C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -26,10 +24,6 @@ Global
 		{3DBFCCD9-413D-4EF9-9FEC-CE1AC7E42E3F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3DBFCCD9-413D-4EF9-9FEC-CE1AC7E42E3F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3DBFCCD9-413D-4EF9-9FEC-CE1AC7E42E3F}.Release|Any CPU.Build.0 = Release|Any CPU
-		{1402E35F-8230-4900-B432-125E04AC277B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{1402E35F-8230-4900-B432-125E04AC277B}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{1402E35F-8230-4900-B432-125E04AC277B}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{1402E35F-8230-4900-B432-125E04AC277B}.Release|Any CPU.Build.0 = Release|Any CPU
 		{B231FDB5-DF3F-425F-A224-1057A3E7182C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{B231FDB5-DF3F-425F-A224-1057A3E7182C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B231FDB5-DF3F-425F-A224-1057A3E7182C}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -37,9 +31,6 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
-	EndGlobalSection
-	GlobalSection(NestedProjects) = preSolution
-		{1402E35F-8230-4900-B432-125E04AC277B} = {914A0D02-5C32-424E-99CC-278EF8097BAE}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {91D22C3A-FE94-441F-9532-A27F96050A7E}

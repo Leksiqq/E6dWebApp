@@ -1,5 +1,6 @@
 using Net.Leksi.E6dWebApp;
 using Net.Leksi.E6dWebApp.Demo.Helloer;
+using System.Diagnostics;
 
 using Doer helloer = new();
 
@@ -9,7 +10,11 @@ helloer.Start();
 
 IConnector connector = helloer.GetConnector();
 
-Console.WriteLine($"Link: {connector.GetLink("/", nameHolder)}");
+Process.Start(new ProcessStartInfo
+{
+    FileName = connector.GetLink("/", nameHolder),
+    UseShellExecute = true
+});
 
 while (true)
 {
