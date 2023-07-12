@@ -7,7 +7,7 @@ namespace Net.Leksi.E6dWebApp;
 
 public abstract class Runner : IDisposable
 {
-    private class OneTimeUrlRequest
+    private class LinkRequest
     {
         internal object? Parameter { get; set; }
     }
@@ -52,9 +52,9 @@ public abstract class Runner : IDisposable
             return _client.Send(request);
         }
 
-        public string GetOneTimeUrl(string path, object? parameter = null)
+        public string GetLink(string path, object? parameter = null)
         {
-            return Get(path, new OneTimeUrlRequest { Parameter = parameter }).ReadToEnd();
+            return Get(path, new LinkRequest { Parameter = parameter }).ReadToEnd();
         }
 
         private static void EnsureSuccessStatusCode(HttpResponseMessage response)
@@ -106,13 +106,13 @@ public abstract class Runner : IDisposable
     private const int s_maxTcpPort = 65535;
     private const int s_startTcpPort = 5000;
 
-    private readonly List<Assembly> _assemblies = new();
-    private readonly Dictionary<Type, Tuple<object, ServiceLifetime>> _services = new();
+    private readonly object _syncObject = new();
     private readonly ManualResetEventSlim _appStartedGate = new();
     private readonly Dictionary<string, Connector> _connectors = new();
     private readonly Dictionary<string, Dictionary<string, WeakReference>> _parameters = new();
     private readonly Dictionary<string, Dictionary<string, Tuple<string, WeakReference?>>> _authorizedCookies = new();
     private WebApplication _app = null!;
+    private bool _isDisposed = false;
 
     public bool IsRunning { get; private set; } = false;
 
@@ -121,77 +121,9 @@ public abstract class Runner : IDisposable
         _appStartedGate.Reset();
     }
 
-    protected abstract void ConfigureBuilder(WebApplicationBuilder builder);
-
-    protected abstract void ConfigureApplication(WebApplication app);
-
-    protected virtual void OnException(Exception ex) { }
-
-    public void AddAssembly(Assembly assembly)
+    ~Runner()
     {
-        if (!_assemblies.Contains(assembly))
-        {
-            _assemblies.Add(assembly);
-        }
-    }
-
-    public void AddService(Type? serviceType, object implementation, ServiceLifetime lifetime = ServiceLifetime.Transient)
-    {
-        if (implementation is null)
-        {
-            throw new ArgumentNullException(nameof(implementation));
-        }
-        Assembly assembly;
-        if (serviceType is null)
-        {
-            serviceType = implementation.GetType();
-        }
-        if (implementation is Type type)
-        {
-            assembly = type.Assembly;
-        }
-        else if (implementation is Func<IServiceProvider, object> implementationMethod)
-        {
-            assembly = implementationMethod.GetMethodInfo().ReturnType.Assembly;
-        }
-        else
-        {
-            assembly = implementation.GetType().Assembly;
-        }
-        if (!_assemblies.Contains(assembly))
-        {
-            _assemblies.Add(assembly);
-        }
-        if (!_services.ContainsKey(serviceType))
-        {
-            _services.Add(serviceType, new Tuple<object, ServiceLifetime>(implementation, lifetime));
-        }
-    }
-
-    public void AddService<TService, TImplementation>(ServiceLifetime lifetime = ServiceLifetime.Transient)
-    {
-        AddService(typeof(TService), typeof(TImplementation), lifetime);
-    }
-
-    public void AddService(Type serviceType, ServiceLifetime lifetime = ServiceLifetime.Transient)
-    {
-        AddService(serviceType, serviceType, lifetime);
-    }
-
-    public void AddService<TService>(ServiceLifetime lifetime = ServiceLifetime.Transient)
-    {
-        AddService(typeof(TService), typeof(TService), lifetime);
-    }
-
-    public void AddService<TService>(object obj, ServiceLifetime lifetime = ServiceLifetime.Transient)
-    {
-        AddService(typeof(TService), obj, lifetime);
-    }
-
-    public void AddService(object obj, ServiceLifetime lifetime = ServiceLifetime.Transient)
-    {
-
-        AddService(null, obj, lifetime);
+        Dispose();
     }
 
     public void Start()
@@ -213,26 +145,7 @@ public abstract class Runner : IDisposable
                 ConfigureBuilder(builder);
 
                 IMvcBuilder mvcBuilder = builder.Services.AddControllersWithViews();
-                foreach (Assembly assembly in _assemblies)
-                {
-                    mvcBuilder.AddApplicationPart(assembly);
-                }
-
-                foreach (KeyValuePair<Type, Tuple<object, ServiceLifetime>> entry in _services)
-                {
-                    if (entry.Value.Item1 is Type type)
-                    {
-                        builder.Services.Add(new ServiceDescriptor(entry.Key, type, entry.Value.Item2));
-                    }
-                    else if (entry.Value.Item1 is Func<IServiceProvider, object> method)
-                    {
-                        builder.Services.Add(new ServiceDescriptor(entry.Key, method, entry.Value.Item2));
-                    }
-                    else
-                    {
-                        builder.Services.Add(new ServiceDescriptor(entry.Key, entry.Value.Item1));
-                    }
-                }
+                mvcBuilder.AddApplicationPart(GetType().Assembly);
 
                 builder.Services.AddScoped<RequestParameter>();
 
@@ -285,7 +198,7 @@ public abstract class Runner : IDisposable
 
                             if (_parameters[connectorId].TryGetValue(serial, out WeakReference? wr) && wr.IsAlive)
                             {
-                                if (wr.Target is OneTimeUrlRequest oneTimeUrlRequest)
+                                if (wr.Target is LinkRequest oneTimeUrlRequest)
                                 {
                                     await context.Response.WriteAsync(ProcessOneTimeUrlRequest(context.Request, oneTimeUrlRequest.Parameter));
                                     return;
@@ -372,6 +285,72 @@ public abstract class Runner : IDisposable
 
     }
 
+    public void Stop()
+    {
+        if (IsRunning)
+        {
+            lock (_syncObject)
+            {
+                if (IsRunning)
+                {
+                    _appStartedGate.Reset();
+                    IsRunning = false;
+                    _appStartedGate.Set();
+                    _appStartedGate.Reset();
+                    Task.Run(async () =>
+                    {
+                        await _app.StopAsync();
+                    }).Wait();
+                    Console.WriteLine("Stopped");
+                }
+            }
+        }
+    }
+
+    public IConnector GetConnector()
+    {
+        if (!IsRunning)
+        {
+            throw new InvalidOperationException("Runner is not running!");
+        }
+        _appStartedGate.Wait();
+        if (!IsRunning)
+        {
+            throw new InvalidOperationException("Runner is not running!");
+        }
+        HttpClient client = new();
+        client.BaseAddress = new Uri(_app.Urls.First());
+        string connectorId = Guid.NewGuid().ToString();
+        lock (_syncObject)
+        {
+            while (_connectors.ContainsKey(connectorId))
+            {
+                connectorId = Guid.NewGuid().ToString();
+            }
+            client.Timeout = Timeout.InfiniteTimeSpan;
+            _parameters.Add(connectorId, new Dictionary<string, WeakReference>());
+            _authorizedCookies.Add(connectorId, new Dictionary<string, Tuple<string, WeakReference?>>());
+            Connector result = new Connector(client, this, connectorId);
+            _connectors.Add(connectorId, result);
+            return result;
+        }
+    }
+
+    public void Dispose()
+    {
+        if (!_isDisposed)
+        {
+            _isDisposed = true;
+            Stop();
+        }
+    }
+
+    protected virtual void ConfigureBuilder(WebApplicationBuilder builder) { }
+
+    protected virtual void ConfigureApplication(WebApplication app) { }
+
+    protected virtual void OnException(Exception ex) { }
+
     private string ProcessOneTimeUrlRequest(HttpRequest request, object? parameter)
     {
         StringBuilder sb = new();
@@ -394,49 +373,4 @@ public abstract class Runner : IDisposable
         return sb.ToString();
     }
 
-    public void Stop()
-    {
-        _appStartedGate.Reset();
-        IsRunning = false;
-        _appStartedGate.Set();
-        _appStartedGate.Reset();
-        Task.Run(async () =>
-        {
-            await _app.StopAsync();
-        }).Wait();
-    }
-
-    public IConnector GetConnector()
-    {
-        if (!IsRunning)
-        {
-            throw new InvalidOperationException("Runner is not started!");
-        }
-        _appStartedGate.Wait();
-        if (!IsRunning)
-        {
-            throw new InvalidOperationException("Runner is not started!");
-        }
-        HttpClient client = new();
-        client.BaseAddress = new Uri(_app.Urls.First());
-        string connectorId = Guid.NewGuid().ToString();
-        lock (_connectors)
-        {
-            while (_connectors.ContainsKey(connectorId))
-            {
-                connectorId = Guid.NewGuid().ToString();
-            }
-            client.Timeout = Timeout.InfiniteTimeSpan;
-            _parameters.Add(connectorId, new Dictionary<string, WeakReference>());
-            _authorizedCookies.Add(connectorId, new Dictionary<string, Tuple<string, WeakReference?>>());
-            Connector result = new Connector(client, this, connectorId);
-            _connectors.Add(connectorId, result);
-            return result;
-        }
-    }
-
-    public void Dispose()
-    {
-        Stop();
-    }
 }
