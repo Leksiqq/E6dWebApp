@@ -15,6 +15,7 @@
 		<RepositoryUrl>https://github.com/Leksiqq/E6dWebApp</RepositoryUrl>
 		<IsPackable>true</IsPackable>
 		<Version>1.0.4</Version>
+    		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 	</PropertyGroup>
   	<Target Name="CopyPackage" AfterTargets="Pack">
     		<Move SourceFiles="$(OutputPath)..\$(PackageId).$(PackageVersion).nupkg" DestinationFolder="W:\C#\nuget.local" />
