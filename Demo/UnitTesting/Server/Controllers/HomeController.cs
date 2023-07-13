@@ -4,14 +4,11 @@ namespace Net.Leksi.E6dWebApp.Demo.UnitTesting.Controllers;
 
 public class HomeController : Controller
 {
-    [Route("/{id?}")]
+    [Route("/{id=0}")]
     [HttpGet]
-    public async Task GetReversedString(int? id)
+    public async Task GetReversedString(int id)
     {
-        if(
-            id is int index 
-            &&  HttpContext.RequestServices.GetRequiredService<IStringProvider>().Get(index) is string str
-        )
+        if(HttpContext.RequestServices.GetRequiredService<IStringProvider>().Get(id) is string str)
         {
             HttpContext.Response.StatusCode = 200;
             for (int i = str.Length - 1; i >= 0; --i)
