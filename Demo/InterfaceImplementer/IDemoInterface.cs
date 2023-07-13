@@ -4,7 +4,5 @@ public interface IDemoInterface
 {
     string Name { get; set; }
     int Count { get; set; }
-    bool IsAwesome { get; set; }
-
-    void Process(int level);
+    bool? IsAwesome { get; set; }
 }

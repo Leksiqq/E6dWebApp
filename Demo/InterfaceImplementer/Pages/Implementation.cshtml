@@ -1,4 +1,34 @@
 ﻿@page
-@model Net.Leksi.E6dWebApp.Demo.InterfaceImplementer.Pages.ImplementationModel
+@using Net.Leksi.E6dWebApp.Demo.InterfaceImplementer.Pages;
+@using Net.Leksi.E6dWebApp.Demo.InterfaceImplementer;
+@model ImplementationModel
 @{
+}
+@Html.Partial("Header", Model)
+
+public class @Model.ClassName: @Html.Raw(string.Join(", ", Model.Interfaces))
+{
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+@foreach(PropertyModel pm in Model.Properties)
+{
+    <text>    private @Html.Raw(pm.Type)@pm.Nullable @pm.FieldName@pm.Init;
+</text>
+}
+
+@foreach(PropertyModel pm in Model.Properties)
+{
+    <text>    public @Html.Raw(pm.Type)@pm.Nullable @pm.Name 
+    {
+        get => @pm.FieldName;
+        set
+        {
+            @pm.FieldName = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(@pm.Name)));
+        }
+    }
+
+</text>
+}
+
 }

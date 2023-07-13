@@ -14,6 +14,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{914A0D02
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Helloer", "Demo\Helloer\Helloer.csproj", "{B231FDB5-DF3F-425F-A224-1057A3E7182C}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InterfaceImplementer", "Demo\InterfaceImplementer\InterfaceImplementer.csproj", "{C1210270-8E07-402F-8BD4-416B77B1F3FA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -28,6 +30,10 @@ Global
 		{B231FDB5-DF3F-425F-A224-1057A3E7182C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B231FDB5-DF3F-425F-A224-1057A3E7182C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B231FDB5-DF3F-425F-A224-1057A3E7182C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C1210270-8E07-402F-8BD4-416B77B1F3FA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C1210270-8E07-402F-8BD4-416B77B1F3FA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C1210270-8E07-402F-8BD4-416B77B1F3FA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C1210270-8E07-402F-8BD4-416B77B1F3FA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

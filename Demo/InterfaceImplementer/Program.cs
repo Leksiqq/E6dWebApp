@@ -1,5 +1,5 @@
 using Net.Leksi.E6dWebApp.Demo.InterfaceImplementer;
-using System.IO;
+using System.Diagnostics;
 using System.Reflection;
 
 List<Type> types = new();
@@ -43,13 +43,15 @@ while (!done)
 
     types.Clear();
 
+    AppDomain.CurrentDomain.AssemblyResolve += CurrentDomain_AssemblyResolve;
     foreach (Type type in asm.GetTypes())
     {
-        if (type.IsInterface)
+        if (type.IsInterface && !type.GetMethods().Any(m => !m.IsSpecialName))
         {
             types.Add(type);
         }
     }
+    AppDomain.CurrentDomain.AssemblyResolve -= CurrentDomain_AssemblyResolve;
 
     if (types.Any())
     {
@@ -75,7 +77,18 @@ while (!done)
             else
             {
                 Console.WriteLine($"Implementing the interface: {types[position - 1]}");
-                generator.Implement(types[position - 1]);
+                string filePath = Path.GetTempFileName();
+                TextReader reader = generator.Implement(types[position - 1]);
+
+                File.WriteAllText(filePath, reader.ReadToEnd());
+
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "notepad.exe",
+                    Arguments = filePath,
+                    UseShellExecute = true
+                });
+
                 done = true;
             }
         }
@@ -83,8 +96,24 @@ while (!done)
     }
     else
     {
-        Console.WriteLine($"The assembly : {path} does not contain any interface.");
+        Console.WriteLine($"The assembly : {path} does not contain any POCO interface.");
         Console.WriteLine();
+    }
+}
+
+static Assembly? CurrentDomain_AssemblyResolve(object? sender, ResolveEventArgs args)
+{
+    string pathWithoutExtension = Path.Combine(
+        Path.GetDirectoryName(args.RequestingAssembly!.Location)!,
+        args.Name.Contains(',') ? args.Name.Substring(0, args.Name.IndexOf(",")) : args.Name
+    );
+    try
+    {
+        return Assembly.LoadFile(pathWithoutExtension + ".dll");
+    }
+    catch (ReflectionTypeLoadException)
+    {
+        return Assembly.LoadFile(pathWithoutExtension + ".exe");
     }
 }
 

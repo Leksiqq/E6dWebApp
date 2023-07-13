@@ -1,0 +1,28 @@
+﻿@using Net.Leksi.E6dWebApp.Demo.InterfaceImplementer.Pages;
+@model ImplementationModel
+@{
+    string[] lines = new[]
+    {
+        string.Join(".", new string[] { Model.NamespaceValue, Model.ClassName}),
+        $"Generated automatically from {Model.Contract}",
+        $"at {DateTime.Now.ToString("s")}"
+    };
+    int maxLength = lines.Select(l => l.Length).Max();
+    <text>//@Html.Raw(string.Format($"{{0,{maxLength + 2}}}", string.Empty).Replace(' ', '/'))//
+</text>
+    foreach(string line in lines.Where(l => !string.IsNullOrEmpty(l)))
+    {
+        <text>// @Html.Raw(string.Format($"{{0}}{{1,{maxLength - line.Length}}}", line, string.Empty)) //
+</text>
+    }
+    <text>//@Html.Raw(string.Format($"{{0,{maxLength + 2}}}", string.Empty).Replace(' ', '/'))//
+</text>
+}
+
+@foreach (string usng in Model.Usings.OrderBy(v => v))
+{
+    <text>using @usng;
+</text>
+}
+
+namespace @Model.NamespaceValue;

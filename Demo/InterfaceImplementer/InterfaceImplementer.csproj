@@ -4,13 +4,9 @@
     <TargetFramework>net6.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <AssemblyName>Net.Leksi.E6dWebApp.Demo.Helloer</AssemblyName>
-    <RootNamespace>Net.Leksi.E6dWebApp.Demo.Helloer</RootNamespace>
+    <AssemblyName>Net.Leksi.E6dWebApp.Demo.InterfaceImplementer</AssemblyName>
+    <RootNamespace>Net.Leksi.E6dWebApp.Demo.InterfaceImplementer</RootNamespace>
   </PropertyGroup>
-
-  <ItemGroup>
-    <Folder Include="Properties\" />
-  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Net.Leksi.E6dWebApp" Version="1.0.3" />
