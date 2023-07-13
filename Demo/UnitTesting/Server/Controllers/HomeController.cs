@@ -8,7 +8,10 @@ public class HomeController : Controller
     [HttpGet]
     public async Task GetReversedString(int? id)
     {
-        if(id is int index &&  HttpContext.RequestServices.GetRequiredService<IStringProvider>().Get(index) is string str)
+        if(
+            id is int index 
+            &&  HttpContext.RequestServices.GetRequiredService<IStringProvider>().Get(index) is string str
+        )
         {
             HttpContext.Response.StatusCode = 200;
             for (int i = str.Length - 1; i >= 0; --i)
