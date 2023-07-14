@@ -1,3 +1,5 @@
+**Attention!** _This article, as well as this announcement, are automatically translated from Russian_.
+
 The **Net.Leksi.E6dWebApp** library (E6dWebApp is short for Embedded Web Application) allows you to embed a web service (hereinafter _server_) into a local application for various application purposes. For example:
 - Generating text files using Razor Pages:
      + for example, sources of various stubs and auxiliary files, as, for example, happens in WPF,
