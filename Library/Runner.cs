@@ -1,15 +1,16 @@
-﻿using Microsoft.AspNetCore.Diagnostics;
-using System.Reflection;
+﻿using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Diagnostics;
 using System.Text;
-using static Net.Leksi.E6dWebApp.Runner;
 
 namespace Net.Leksi.E6dWebApp;
 
 public abstract class Runner : IDisposable
 {
-    private class LinkRequest
+    private class RequestOptions
     {
-        internal object? Parameter { get; set; }
+        internal WeakReference? Parameter { get; set; }
+        internal WeakReference<Action<HttpContext>>? OnRequest { get; set; }
+        internal bool IsLinkRequest { get; set; } = false;
     }
 
     public class Connector : IConnector
@@ -39,22 +40,43 @@ public abstract class Runner : IDisposable
             _id = id;
         }
 
-        public TextReader Get(string path, object? parameter = null)
+        public TextReader Get(string path, object? parameter = null, Action<HttpContext>? onRequest = null)
         {
-            HttpResponseMessage response = Send(new HttpRequestMessage(HttpMethod.Get, path), parameter);
+            HttpResponseMessage response = Send(
+                new HttpRequestMessage(HttpMethod.Get, path), parameter, onRequest
+            );
             EnsureSuccessStatusCode(response);
             return new StreamReader(response.Content.ReadAsStream());
         }
 
-        public HttpResponseMessage Send(HttpRequestMessage request, object? parameter = null)
+        public HttpResponseMessage Send(HttpRequestMessage request, object? parameter = null, 
+            Action<HttpContext>? onRequest = null)
         {
-            PrepareRequest(request, parameter);
+            PrepareRequest(
+                request,
+                parameter is { } || onRequest is { }
+                ? new RequestOptions
+                {
+                    Parameter = parameter is { } ? new WeakReference(parameter) : null,
+                    OnRequest = onRequest is { } ? new WeakReference<Action<HttpContext>>(onRequest) : null,
+                } : null
+            );
             return _client.Send(request);
         }
 
-        public string GetLink(string path, object? parameter = null)
+        public string GetLink(string path, object? parameter = null, Action<HttpContext>? onRequest = null)
         {
-            return Get(path, new LinkRequest { Parameter = parameter }).ReadToEnd();
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, path);
+            PrepareRequest(
+                request,
+                new RequestOptions
+                {
+                    Parameter = parameter is { } ? new WeakReference(parameter) : null,
+                    OnRequest = onRequest is { } ? new WeakReference<Action<HttpContext>>(onRequest) : null,
+                    IsLinkRequest = true,
+                }
+            );
+            return new StreamReader(_client.Send(request).Content.ReadAsStream()).ReadToEnd();
         }
 
         private static void EnsureSuccessStatusCode(HttpResponseMessage response)
@@ -79,7 +101,7 @@ public abstract class Runner : IDisposable
             }
         }
 
-        private void PrepareRequest(HttpRequestMessage request, object? parameter)
+        private void PrepareRequest(HttpRequestMessage request, RequestOptions? requestOptions)
         {
 
             if (!_runner.IsRunning)
@@ -94,9 +116,9 @@ public abstract class Runner : IDisposable
             string serial = Interlocked.Increment(ref _serial).ToString();
             request.Headers.Add(s_serialHeaderName, serial);
             request.Headers.Add(s_connectorIdHeaderName, _id);
-            if (parameter is { })
+            if (requestOptions is { })
             {
-                _runner._parameters[_id].Add(serial, new WeakReference(parameter));
+                _runner._parameters[_id].Add(serial, requestOptions);
             }
         }
     }
@@ -109,8 +131,8 @@ public abstract class Runner : IDisposable
     private readonly object _syncObject = new();
     private readonly ManualResetEventSlim _appStartedGate = new();
     private readonly Dictionary<string, Connector> _connectors = new();
-    private readonly Dictionary<string, Dictionary<string, WeakReference>> _parameters = new();
-    private readonly Dictionary<string, Dictionary<string, Tuple<string, WeakReference?>>> _authorizedCookies = new();
+    private readonly Dictionary<string, Dictionary<string, RequestOptions>> _parameters = new();
+    private readonly Dictionary<string, Dictionary<string, Tuple<string, RequestOptions?>>> _authorizedCookies = new();
     private WebApplication _app = null!;
     private bool _isDisposed = false;
 
@@ -196,14 +218,32 @@ public abstract class Runner : IDisposable
 
                             connectorId = context.Request.Headers[s_connectorIdHeaderName][0];
 
-                            if (_parameters[connectorId].TryGetValue(serial, out WeakReference? wr) && wr.IsAlive)
+                            if (
+                                _parameters[connectorId].TryGetValue(serial, out RequestOptions? requestOptions)
+                            )
                             {
-                                if (wr.Target is LinkRequest oneTimeUrlRequest)
+                                if (requestOptions.IsLinkRequest)
                                 {
-                                    await context.Response.WriteAsync(ProcessOneTimeUrlRequest(context.Request, oneTimeUrlRequest.Parameter));
+                                    await context.Response.WriteAsync(
+                                        ProcessOneTimeUrlRequest(context.Request, requestOptions)
+                                    );
                                     return;
                                 }
-                                context.RequestServices.GetRequiredService<RequestParameter>().Parameter = wr.Target;
+                                if (
+                                    requestOptions.OnRequest is { }
+                                    && requestOptions.OnRequest.TryGetTarget(out Action<HttpContext>? callback)
+                                )
+                                {
+                                    callback?.Invoke(context);
+                                }
+                                if (
+                                    requestOptions.Parameter is { }
+                                    && requestOptions.Parameter.IsAlive
+                                )
+                                {
+                                    context.RequestServices.GetRequiredService<RequestParameter>().Parameter = 
+                                        requestOptions.Parameter.Target;
+                                }
                             }
                             await next.Invoke(context);
 
@@ -226,12 +266,26 @@ public abstract class Runner : IDisposable
                             queryString = context.Request.QueryString.Value!.Replace($"&{selectorKey}={connectorId}", string.Empty);
                         }
                         if (
-                            _authorizedCookies[connectorId].TryGetValue(selectorKey!, out Tuple<string, WeakReference?>? tuple)
+                            _authorizedCookies[connectorId].TryGetValue(selectorKey!, out Tuple<string, RequestOptions?>? tuple)
                         )
                         {
-                            if (tuple.Item2 is WeakReference wr1 && wr1.IsAlive)
+                            if(tuple.Item2 is { })
                             {
-                                context.RequestServices.GetRequiredService<RequestParameter>().Parameter = wr1.Target;
+                                if (
+                                    tuple.Item2.OnRequest is { }
+                                    && tuple.Item2.OnRequest.TryGetTarget(out Action<HttpContext>? callback)
+                                )
+                                {
+                                    callback?.Invoke(context);
+                                }
+                                if (
+                                    tuple.Item2.Parameter is { }
+                                    && tuple.Item2.Parameter.IsAlive
+                                )
+                                {
+                                    context.RequestServices.GetRequiredService<RequestParameter>().Parameter =
+                                        tuple.Item2.Parameter.Target;
+                                }
                             }
                             if (hasQuery)
                             {
@@ -242,7 +296,7 @@ public abstract class Runner : IDisposable
 
                                 if (
                                     oldCookie is { }
-                                    && _authorizedCookies[connectorId].TryGetValue(oldCookie!, out Tuple<string, WeakReference?>? tuple1)
+                                    && _authorizedCookies[connectorId].TryGetValue(oldCookie!, out Tuple<string, RequestOptions?>? tuple1)
                                     && tuple1.Item1.Equals($"{context.Request.Scheme}://{context.Request.Host}{context.Request.Path}{context.Request.QueryString}")
                                 )
                                 {
@@ -333,8 +387,8 @@ public abstract class Runner : IDisposable
                 connectorId = Guid.NewGuid().ToString();
             }
             client.Timeout = Timeout.InfiniteTimeSpan;
-            _parameters.Add(connectorId, new Dictionary<string, WeakReference>());
-            _authorizedCookies.Add(connectorId, new Dictionary<string, Tuple<string, WeakReference?>>());
+            _parameters.Add(connectorId, new Dictionary<string, RequestOptions>());
+            _authorizedCookies.Add(connectorId, new Dictionary<string, Tuple<string, RequestOptions?>>());
             Connector result = new Connector(client, this, connectorId);
             _connectors.Add(connectorId, result);
             return result;
@@ -356,7 +410,7 @@ public abstract class Runner : IDisposable
 
     protected virtual void OnException(Exception ex) { }
 
-    private string ProcessOneTimeUrlRequest(HttpRequest request, object? parameter)
+    private string ProcessOneTimeUrlRequest(HttpRequest request, RequestOptions? requestOptions)
     {
         StringBuilder sb = new();
         sb.Append(request.Scheme).Append("://").Append(request.Host).Append(request.Path).Append(request.QueryString);
@@ -371,7 +425,7 @@ public abstract class Runner : IDisposable
             while (request.Query.TryGetValue(oneTimeCode, out _) || _authorizedCookies[request.Headers[s_connectorIdHeaderName][0]].ContainsKey(oneTimeCode));
             _authorizedCookies[request.Headers[s_connectorIdHeaderName][0]].Add(
                 oneTimeCode,
-                new Tuple<string, WeakReference?>(sourceUrl, parameter is { } ? new WeakReference(parameter) : null)
+                new Tuple<string, RequestOptions?>(sourceUrl, requestOptions)
             );
         }
         sb.Append(request.Query.Any() ? '&' : '?').Append(oneTimeCode).Append('=').Append(request.Headers[s_connectorIdHeaderName][0]);

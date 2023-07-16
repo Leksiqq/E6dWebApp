@@ -3,7 +3,7 @@
 public interface IConnector
 {
     bool IsConnected { get; }
-    TextReader Get(string path, object? parameter = null);
-    HttpResponseMessage Send(HttpRequestMessage request, object? parameter = null);
-    string GetLink(string path, object? parameter = null);
+    TextReader Get(string path, object? parameter = null, Action<HttpContext>? onRequest = null);
+    HttpResponseMessage Send(HttpRequestMessage request, object? parameter = null, Action<HttpContext>? onRequest = null);
+    string GetLink(string path, object? parameter = null, Action<HttpContext>? onRequest = null);
 }
