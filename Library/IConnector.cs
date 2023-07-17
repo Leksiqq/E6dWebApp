@@ -6,4 +6,5 @@ public interface IConnector
     TextReader Get(string path, object? parameter = null, Action<HttpContext>? onRequest = null);
     HttpResponseMessage Send(HttpRequestMessage request, object? parameter = null, Action<HttpContext>? onRequest = null);
     string GetLink(string path, object? parameter = null, Action<HttpContext>? onRequest = null);
+    void ClearLink(string link);
 }
