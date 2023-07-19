@@ -14,13 +14,13 @@
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<RepositoryUrl>https://github.com/Leksiqq/E6dWebApp</RepositoryUrl>
 		<IsPackable>true</IsPackable>
-		<Version>1.1.1</Version>
+		<Version>1.1.2</Version>
     		<PackageLicenseExpression>MIT</PackageLicenseExpression>
     		<PackageTags>embedded-web-application;razor-pages;asp.net-core;nunits;units-testing;source-generation</PackageTags>
     		<Description>Библиотека Net.Leksi.E6dWebApp позволяет встроить веб-сервис в локальное приложение для различных прикладных целей.
 The Net.Leksi.E6dWebApp library allows you to embed a web service into a local application for various application purposes.</Description>
     		<PackageReleaseNotes>
-          1.1.1	      Добавлена обработка исключений, возникающих в просессе конфигурации встраиваемого сервера, отсутствие которой ранее приводило к зависанию.
+          1.1.2	      Добавлена обработка исключений, возникающих в процессе конфигурации встраиваемого сервера, отсутствие которой ранее приводило к зависанию.
                          Added handling of exceptions that occur in the embedded server configuration process, the absence of which previously led to a hang.
           1.1.0       Добавлен параметр Action&lt;HttpContext&gt; onRequest к методам IConnector: Get, Send, GetLink; добавлен метод IConnector: ClearLink; исправлены обнаруженные недочёты.
                          Added parameter Action&lt;HttpContext&gt; onRequest to IConnector methods: Get, Send, GetLink; added method IConnector: ClearLink; detected bugs fixed.
