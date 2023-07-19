@@ -61,7 +61,7 @@ public class Tests : Runner
 
     protected override void ConfigureBuilder(WebApplicationBuilder builder)
     {
-        IMvcBuilder mvcBuilder = builder.Services.AddControllersWithViews();
+        IMvcBuilder mvcBuilder = builder.Services.AddMvc();
         mvcBuilder.AddApplicationPart(typeof(Server).Assembly);
 
         _server.ConfigureBuilder(builder);

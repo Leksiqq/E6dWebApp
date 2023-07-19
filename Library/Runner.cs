@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Diagnostics;
+using System.Runtime.ExceptionServices;
 using System.Text;
 
 namespace Net.Leksi.E6dWebApp;
@@ -172,6 +173,8 @@ public abstract class Runner : IDisposable
         IsRunning = true;
         Random rnd = new();
 
+        ExceptionDispatchInfo? exception = null;
+
         Task loadTask = Task.Run(() =>
         {
 
@@ -181,15 +184,24 @@ public abstract class Runner : IDisposable
 
                 WebApplicationBuilder builder = WebApplication.CreateBuilder(new string[] { });
 
-                builder.Logging.ClearProviders();
+                try
+                {
+                    builder.Logging.ClearProviders();
 
-                ConfigureBuilder(builder);
+                    ConfigureBuilder(builder);
 
-                IMvcBuilder mvcBuilder = builder.Services.AddControllersWithViews();
-                mvcBuilder.AddApplicationPart(GetType().Assembly);
+                    IMvcBuilder mvcBuilder = builder.Services.AddMvc();
+                    mvcBuilder.AddApplicationPart(GetType().Assembly);
 
-                builder.Services.AddScoped<RequestParameter>();
+                    builder.Services.AddScoped<RequestParameter>();
 
+                }
+                catch (Exception ex)
+                {
+                    exception = ExceptionDispatchInfo.Capture(ex);
+                    _appStartedGate.Set();
+                    break;
+                }
                 _app = builder.Build();
 
                 _app.UseExceptionHandler(eapp =>
@@ -326,7 +338,16 @@ public abstract class Runner : IDisposable
                     await context.Response.WriteAsync(String.Empty);
                 });
 
-                ConfigureApplication(_app);
+                try
+                {
+                    ConfigureApplication(_app);
+                }
+                catch (Exception ex)
+                {
+                    exception = ExceptionDispatchInfo.Capture(ex);
+                    _appStartedGate.Set();
+                    break;
+                }
 
                 _app.Lifetime.ApplicationStarted.Register(() =>
                 {
@@ -346,10 +367,15 @@ public abstract class Runner : IDisposable
 
         _appStartedGate.Wait();
 
+        if(exception is { })
+        {
+            exception.Throw();
+        }
         if (loadTask.IsFaulted)
         {
             throw loadTask.Exception ?? new Exception("Unknown");
         }
+
 
     }
 
