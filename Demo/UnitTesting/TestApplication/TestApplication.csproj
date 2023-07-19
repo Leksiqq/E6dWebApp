@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>Net.Leksi.E6dWebApp.Demo.UnitTesting.TestApplication</AssemblyName>
     <RootNamespace>Net.Leksi.E6dWebApp.Demo.UnitTesting.TestApplication</RootNamespace>
+    <NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>
   </PropertyGroup>
 
   <ItemGroup>

@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>Net.Leksi.E6dWebApp.Demo.Helloer</AssemblyName>
     <RootNamespace>Net.Leksi.E6dWebApp.Demo.Helloer</RootNamespace>
+    <NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>
   </PropertyGroup>
 
   <ItemGroup>

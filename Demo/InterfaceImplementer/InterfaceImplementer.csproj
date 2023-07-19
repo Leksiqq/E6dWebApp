@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>Net.Leksi.E6dWebApp.Demo.InterfaceImplementer</AssemblyName>
     <RootNamespace>Net.Leksi.E6dWebApp.Demo.InterfaceImplementer</RootNamespace>
+    <NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>
   </PropertyGroup>
 
   <ItemGroup>

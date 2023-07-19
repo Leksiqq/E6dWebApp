@@ -6,5 +6,6 @@
 		<AssemblyName>Net.Leksi.E6dWebApp</AssemblyName>
 		<RootNamespace>Net.Leksi.E6dWebApp</RootNamespace>
 		<OutputType>Library</OutputType>
-	</PropertyGroup>
+    <NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>
+  </PropertyGroup>
 </Project>

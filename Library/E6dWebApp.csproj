@@ -25,7 +25,8 @@ The Net.Leksi.E6dWebApp library allows you to embed a web service into a local a
           1.1.0       Добавлен параметр Action&lt;HttpContext&gt; onRequest к методам IConnector: Get, Send, GetLink; добавлен метод IConnector: ClearLink; исправлены обнаруженные недочёты.
                          Added parameter Action&lt;HttpContext&gt; onRequest to IConnector methods: Get, Send, GetLink; added method IConnector: ClearLink; detected bugs fixed.
         </PackageReleaseNotes>
-	</PropertyGroup>
+    <NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>
+  </PropertyGroup>
   	<Target Name="CopyPackage" AfterTargets="Pack">
     		<Move SourceFiles="$(OutputPath)..\$(PackageId).$(PackageVersion).nupkg" DestinationFolder="W:\C#\nuget.local" />
   	</Target>
