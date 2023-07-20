@@ -69,8 +69,8 @@ os.system('git tag | tee {}'.format(fp.name))
 
 f = open(fp.name)
 for line in f:
-	if line == tag:
-		hasTag = true
+	if line.strip() == tag:
+		hasTag = True
 		break
 f.close()
 
