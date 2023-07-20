@@ -14,7 +14,7 @@
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<RepositoryUrl>https://github.com/Leksiqq/E6dWebApp</RepositoryUrl>
 		<IsPackable>true</IsPackable>
-		<Version>1.1.7</Version>
+		<Version>1.1.8</Version>
     		<PackageLicenseExpression>MIT</PackageLicenseExpression>
     		<PackageTags>embedded-web-application;razor-pages;asp.net-core;nunits;units-testing;source-generation</PackageTags>
     		<Description>Библиотека Net.Leksi.E6dWebApp позволяет встроить веб-сервис в локальное приложение для различных прикладных целей.

@@ -101,6 +101,8 @@ if not hasTag:
 				line = line.replace(match.group(1), version).replace(match.group(2), version)
 			f1.write(line)
 		f1.close()
+		os.system('del /q {}'.format(file))
+		os.system('ren {} {}'.format(newFile, file))
 	os.system('git commit --allow-empty-message -a -m ""')
 	os.system('git push github master')
 
