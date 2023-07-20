@@ -89,7 +89,7 @@ for remote in ['github', 'sofo']:
 if True: #not hasTag:
 	os.chdir('wiki')
 	os.system('git pull github master')
-	files = [f for f in os.listdir('.') if re.match(r'[^-]+-(?:{}|{}|{})-(?:ru|en)\.md'.format(helloer, implementer, 'UnitTesting'), f)]
+	files = [f for f in os.listdir('.') if re.match(r'[^-]+-(?:Helloer|InterfaceImplementer|UnitTesting)-(?:ru|en)\.md', f)]
 	for file in files:
 		f = open(file)
 		for line in f:
