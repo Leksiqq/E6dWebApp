@@ -81,7 +81,7 @@ else:
 	os.system('git commit --allow-empty-message -a -m "{}"'.format(tag))
 	os.system('git tag {}'.format(tag))
 
-for remote in ['gitnub', 'sofo']:
+for remote in ['github', 'sofo']:
 	os.system('git push {} master'.format(remote))
 	if not hasTag:
 		os.system('git push {} {}'.format(remote, tag))
