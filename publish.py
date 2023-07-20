@@ -1,6 +1,7 @@
 import os
 import tempfile
 import re
+import io
 
 directory = os.path.dirname(os.path.realpath(__file__))
 
@@ -91,6 +92,6 @@ if True: #not hasTag:
 	os.system('git pull github master')
 	files = [f for f in os.listdir('.') if re.match(r'[^-]+-(?:Helloer|InterfaceImplementer|UnitTesting)-(?:ru|en)\.md', f)]
 	for file in files:
-		f = open(file)
+		f = io.open(file, mode='r', encoding='utf-8')
 		for line in f:
 			print(line)
