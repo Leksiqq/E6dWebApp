@@ -1,3 +1,4 @@
+# coding=866
 import os
 import tempfile
 import re
@@ -85,3 +86,18 @@ for remote in ['github', 'sofo']:
 	os.system('git push {} master'.format(remote))
 	if not hasTag:
 		os.system('git push {} {}'.format(remote, tag))
+
+if True: #not hasTag:
+	os.chdir('wiki')
+	os.system('git pull github master')
+	for file in [
+		'Демо-Helloer-ru.md',
+		'Demo-Helloer-en.md',
+		'Демо-InterfaceImplementer-ru.md',
+		'Demo-InterfaceImplementer-en.md',
+		'Демо-UnitTesting-ru.md',
+		'Demo-UnitTesting-en.md'
+		]:
+		f = open(file)
+		for line in f:
+			print(line)
