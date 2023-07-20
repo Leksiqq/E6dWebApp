@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Net.Leksi.E6dWebApp" Version="1.1.6" />
+    <PackageReference Include="Net.Leksi.E6dWebApp" Version="1.1.7" />
   </ItemGroup>
 
 </Project>

@@ -87,9 +87,9 @@ for remote in ['github', 'sofo']:
 	if not hasTag:
 		os.system('git push {} {}'.format(remote, tag))
 
-if True: #not hasTag:
+if not hasTag:
 	os.chdir('wiki')
-	#os.system('git pull github master')
+	os.system('git pull github master')
 	files = [f for f in os.listdir('.') if re.match(r'[^-]+-(?:Helloer|InterfaceImplementer|UnitTesting)-(?:ru|en)\.md$', f)]
 	for file in files:
 		newFile = file + '.new'
@@ -101,10 +101,8 @@ if True: #not hasTag:
 				line = line.replace(match.group(1), version).replace(match.group(2), version)
 			f1.write(line)
 		f1.close()
-		fStat = os.stat(file);
-		f1Stat = os.stat(newFile);
-		if fStat.st_size - f1Stat.st_size == len(match.group(1)) - len(version):
-			print('OK')
+	os.system('git commit --allow-empty-message -a -m ""')
+	os.system('git push github master')
 
 
 
