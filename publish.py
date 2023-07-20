@@ -90,7 +90,7 @@ for remote in ['github', 'sofo']:
 if True: #not hasTag:
 	os.chdir('wiki')
 	#os.system('git pull github master')
-	files = [f for f in os.listdir('.') if re.match(r'[^-]+-(?:Helloer|InterfaceImplementer|UnitTesting)-(?:ru|en)\.md', f)]
+	files = [f for f in os.listdir('.') if re.match(r'[^-]+-(?:Helloer|InterfaceImplementer|UnitTesting)-(?:ru|en)\.md$', f)]
 	for file in files:
 		f = io.open(file, mode='r', encoding='utf-8')
 		f1 = io.open(file + '.new', mode='w', encoding='utf-8')
