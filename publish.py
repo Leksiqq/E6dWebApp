@@ -94,6 +94,6 @@ if True: #not hasTag:
 	for file in files:
 		f = io.open(file, mode='r', encoding='utf-8')
 		for line in f:
-			match = re.match(r'\(\.\./releases/download/v(\d+\.\d+\.\d+)/[^-]+-(\d+\.\d+\.\d+)-7z\.exe\)')
+			match = re.match(r'\(\.\./releases/download/v(\d+\.\d+\.\d+)/[^-]+-(\d+\.\d+\.\d+)-7z\.exe\)', line)
 			if match:
 				print(line)
