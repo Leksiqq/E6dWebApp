@@ -1,4 +1,3 @@
-# coding=866
 import os
 import tempfile
 import re
@@ -90,14 +89,8 @@ for remote in ['github', 'sofo']:
 if True: #not hasTag:
 	os.chdir('wiki')
 	os.system('git pull github master')
-	for file in [
-		'Демо-Helloer-ru.md',
-		'Demo-Helloer-en.md',
-		'Демо-InterfaceImplementer-ru.md',
-		'Demo-InterfaceImplementer-en.md',
-		'Демо-UnitTesting-ru.md',
-		'Demo-UnitTesting-en.md'
-		]:
+	files = [f for f in os.listdir('.') if re.match(r'[^-]+-(?:{}|{}|{})-(?:ru|en)\.md'.format(helloer, implementer, 'UnitTesting'), f)]
+	for file in files:
 		f = open(file)
 		for line in f:
 			print(line)
