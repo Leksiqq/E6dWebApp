@@ -89,11 +89,14 @@ for remote in ['github', 'sofo']:
 
 if True: #not hasTag:
 	os.chdir('wiki')
-	os.system('git pull github master')
+	#os.system('git pull github master')
 	files = [f for f in os.listdir('.') if re.match(r'[^-]+-(?:Helloer|InterfaceImplementer|UnitTesting)-(?:ru|en)\.md', f)]
 	for file in files:
 		f = io.open(file, mode='r', encoding='utf-8')
+		f1 = io.open(file + '.new', mode='w', encoding='utf-8')
 		for line in f:
-			match = re.match(r'\(\.\./releases/download/v(\d+\.\d+\.\d+)/[^-]+-(\d+\.\d+\.\d+)-7z\.exe\)', line)
+			match = re.match(r'[^(]+\(\.\./releases/download/v(\d+\.\d+\.\d+)/[^-]+-(\d+\.\d+\.\d+)-7z\.exe\)', line.strip())
 			if match != None:
-				print(line)
+				line = line.replace(match.group(1), tag).replace(match.group(2), version)
+			f1.write(line)
+		f1.close()
