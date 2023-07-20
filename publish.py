@@ -97,6 +97,6 @@ if True: #not hasTag:
 		for line in f:
 			match = re.match(r'[^(]+\(\.\./releases/download/v(\d+\.\d+\.\d+)/[^-]+-(\d+\.\d+\.\d+)-7z\.exe\)', line.strip())
 			if match != None:
-				line = line.replace(match.group(1), tag).replace(match.group(2), version)
+				line = line.replace(match.group(1), version).replace(match.group(2), version)
 			f1.write(line)
 		f1.close()
