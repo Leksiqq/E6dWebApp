@@ -188,12 +188,12 @@ public abstract class Runner : IDisposable
                 {
                     builder.Logging.ClearProviders();
 
-                    ConfigureBuilder(builder);
-
                     IMvcBuilder mvcBuilder = builder.Services.AddMvc();
                     mvcBuilder.AddApplicationPart(GetType().Assembly);
 
                     builder.Services.AddScoped<RequestParameter>();
+
+                    ConfigureBuilder(builder);
 
                 }
                 catch (Exception ex)

@@ -13,7 +13,7 @@ All classes are contained in the `Net.Leksi.E6dWebApp` namespace.
 * `IConnector` - interface of the object provided by `Runner` through which authorized requests to _server_ are made.
 * `RequestParameter` - a carrier object of a user object transmitted to the _server_ in parallel with the request. This object is available on _server_ through dependency injection.
 
-**Important**: It is recommended that any project that uses this library be created as an **Empty ASP.Net Core** template, otherwise it will be difficult to add this framework (at least I don't know how to do it)!
+**Important**: It is recommended that any project that uses this library be created as an **Empty ASP.Net Core** template!
 
 It is also proposed to familiarize yourself with the demonstration projects:
 - `Demo:Helloer` - shows how to use the `GetLink` connector method.

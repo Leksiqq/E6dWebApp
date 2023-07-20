@@ -7,6 +7,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "E6dWebApp", "Library\E6dWeb
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Элементы решения", "Элементы решения", "{917F4217-28DF-44AC-8BEA-CF28A63DABF6}"
 	ProjectSection(SolutionItems) = preProject
+		publish.py = publish.py
 		README.md = README.md
 	EndProjectSection
 EndProject
