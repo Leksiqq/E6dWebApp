@@ -92,11 +92,21 @@ if True: #not hasTag:
 	#os.system('git pull github master')
 	files = [f for f in os.listdir('.') if re.match(r'[^-]+-(?:Helloer|InterfaceImplementer|UnitTesting)-(?:ru|en)\.md$', f)]
 	for file in files:
+		newFile = file + '.new'
 		f = io.open(file, mode='r', encoding='utf-8')
-		f1 = io.open(file + '.new', mode='w', encoding='utf-8')
+		f1 = io.open(newFile, mode='w', encoding='utf-8')
 		for line in f:
 			match = re.match(r'[^(]+\(\.\./releases/download/v(\d+\.\d+\.\d+)/[^-]+-(\d+\.\d+\.\d+)-7z\.exe\)', line.strip())
-			if match != None:
+			if match != None and match.group(1) == match.group(2):
 				line = line.replace(match.group(1), version).replace(match.group(2), version)
 			f1.write(line)
 		f1.close()
+		fStat = os.stat(file);
+		f1Stat = os.stat(newFile);
+		if fStat.st_size - f1Stat.st_size == len(match.group(1)) - len(version):
+			print('OK')
+
+
+
+
+
