@@ -27,6 +27,10 @@ version = pack[len(package) + 1:-len('.nupkg')]
 
 print(version)
 
+if not os.path.exists("Release"):
+	os.makedirs("Release")
+	
+
 os.system('del /q Release\\*')
 os.system('copy ..\\nuget.local\\{} Release'.format(pack))
 
