@@ -14,6 +14,7 @@ All classes are contained in the `Net.Leksi.E6dWebApp` namespace.
 * `RequestParameter` - a carrier object of a user object transmitted to the _server_ in parallel with the request. This object is available on _server_ through dependency injection.
 
 **Important**: It is recommended to create any project that uses this library as an **Empty ASP.Net Core template**, or manually replace the `Sdk` attribute from "Microsoft.NET.Sdk" to "Microsoft.NET.Sdk.Web" in the project's XML file!
+
 It is also proposed to familiarize yourself with the demonstration projects:
 - `Demo:Helloer` - shows how to use the `GetLink` connector method.
 - `Demo:InterfaceImplementer` - shows how to use the built-in web server to generate class source files.
