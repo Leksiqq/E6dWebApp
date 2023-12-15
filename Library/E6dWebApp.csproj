@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 	<PropertyGroup>
-		<TargetFramework>net8.0-windows</TargetFramework>
+		<TargetFrameworks>net8.0-windows;net6.0-windows</TargetFrameworks>
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<AssemblyName>Net.Leksi.E6dWebApp</AssemblyName>
@@ -14,7 +14,7 @@
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<RepositoryUrl>https://github.com/Leksiqq/E6dWebApp</RepositoryUrl>
 		<IsPackable>true</IsPackable>
-		<Version>1.1.11</Version>
+		<Version>1.1.12</Version>
     		<PackageLicenseExpression>MIT</PackageLicenseExpression>
     		<PackageTags>embedded-web-application;razor-pages;asp.net-core;nunits;units-testing;source-generation</PackageTags>
     		<Description>Библиотека Net.Leksi.E6dWebApp позволяет встроить веб-сервис в локальное приложение для различных прикладных целей.
@@ -29,7 +29,7 @@ The Net.Leksi.E6dWebApp library allows you to embed a web service into a local a
     <NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>
   </PropertyGroup>
   	<Target Name="CopyPackage" AfterTargets="Pack">
-    		<Move SourceFiles="$(OutputPath)..\$(PackageId).$(PackageVersion).nupkg" DestinationFolder="W:\C#\nuget.local" />
+    		<Move SourceFiles="$(OutputPath)\$(PackageId).$(PackageVersion).nupkg" DestinationFolder="W:\C#\nuget.local" />
   	</Target>
 
 	<ItemGroup>
