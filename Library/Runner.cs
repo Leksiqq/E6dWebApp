@@ -16,6 +16,7 @@ public abstract class Runner : IDisposable
     private class RequestOptions
     {
         internal object? Parameter { get; set; }
+        internal TextWriter? TextWriter {  get; set; }
         internal Action<HttpContext>? OnRequest { get; set; }
         internal LinkRequest LinkRequest { get; set; } = LinkRequest.None;
     }
@@ -40,6 +41,8 @@ public abstract class Runner : IDisposable
             }
         }
 
+        public bool RedirectConsoleOut { get; set; } = false;
+
         internal Connector(HttpClient client, Runner generator, string id)
         {
             _client = client;
@@ -59,16 +62,24 @@ public abstract class Runner : IDisposable
         public HttpResponseMessage Send(HttpRequestMessage request, object? parameter = null, 
             Action<HttpContext>? onRequest = null)
         {
+            MemoryStream? ms = RedirectConsoleOut ? new() : null;
             PrepareRequest(
                 request,
-                parameter is { } || onRequest is { }
+                parameter is { } || onRequest is { } || RedirectConsoleOut
                 ? new RequestOptions
                 {
                     Parameter = parameter,
                     OnRequest = onRequest,
+                    TextWriter = RedirectConsoleOut ? new StreamWriter(ms!) { AutoFlush = true } : null,
                 } : null
             );
-            return _client.Send(request);
+            HttpResponseMessage response = _client.Send(request);
+            if (RedirectConsoleOut)
+            {
+                ms!.Position = 0;
+                Console.WriteLine(new StreamReader(ms).ReadToEnd());
+            }
+            return response;
         }
 
         public string GetLink(string path, object? parameter = null, Action<HttpContext>? onRequest = null)
@@ -249,6 +260,7 @@ public abstract class Runner : IDisposable
 
                             connectorId = context.Request.Headers[s_connectorIdHeaderName][0];
 
+                            TextWriter? saveOut = null;
                             if (
                                 _parameters[connectorId].TryGetValue(serial, out RequestOptions? requestOptions)
                             )
@@ -271,10 +283,25 @@ public abstract class Runner : IDisposable
                                     context.RequestServices.GetRequiredService<RequestParameter>().Parameter =
                                         requestOptions.Parameter;
                                 }
+                                if (requestOptions.TextWriter is { })
+                                {
+                                    saveOut = Console.Out;
+                                    Console.SetOut(requestOptions.TextWriter);
+                                }
                                 requestOptions.OnRequest?.Invoke(context);
                                 
                             }
-                            await next.Invoke(context);
+                            try
+                            {
+                                await next.Invoke(context);
+                            }
+                            finally
+                            {
+                                if(saveOut is { })
+                                {
+                                    Console.SetOut(saveOut);
+                                }
+                            }
 
                             _parameters[connectorId].Remove(serial);
 
