@@ -77,7 +77,7 @@ public abstract class Runner : IDisposable
             if (RedirectConsoleOut)
             {
                 ms!.Position = 0;
-                Console.WriteLine(new StreamReader(ms).ReadToEnd());
+                Console.Write(new StreamReader(ms).ReadToEnd());
             }
             return response;
         }
