@@ -1,42 +1,40 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
-	<PropertyGroup>
-		<TargetFrameworks>net8.0-windows;net6.0-windows</TargetFrameworks>
-		<Nullable>enable</Nullable>
-		<ImplicitUsings>enable</ImplicitUsings>
-		<AssemblyName>Net.Leksi.E6dWebApp</AssemblyName>
-		<RootNamespace>Net.Leksi.E6dWebApp</RootNamespace>
-		<OutputType>Library</OutputType>
-		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<Title>Embedded Web Application</Title>
-		<Authors>leksiq</Authors>
-		<Copyright>Алексей Юрьевич Захаров &lt;leksi@leksi.net&gt;, 2023</Copyright>
-		<PackageProjectUrl>https://github.com/Leksiqq/E6dWebApp/wiki</PackageProjectUrl>
-		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<RepositoryUrl>https://github.com/Leksiqq/E6dWebApp</RepositoryUrl>
-		<IsPackable>true</IsPackable>
-		<Version>1.1.16</Version>
-    		<PackageLicenseExpression>MIT</PackageLicenseExpression>
-    		<PackageTags>embedded-web-application;razor-pages;asp.net-core;nunits;units-testing;source-generation</PackageTags>
-    		<Description>Библиотека Net.Leksi.E6dWebApp позволяет встроить веб-сервис в локальное приложение для различных прикладных целей. The Net.Leksi.E6dWebApp library allows you to embed a web service into a local application for various application purposes.</Description>
-    		<PackageReleaseNotes>
-          1.1.14			Добавлено перенаправление вывода на консоль из оработчика запроса.
-												Added redirection of output to the console from the request handler.
-          1.1.11			NET8.0
-          1.1.2	      Добавлена обработка исключений, возникающих в процессе конфигурации встраиваемого сервера, отсутствие которой ранее приводило к зависанию.
-                         Added handling of exceptions that occur in the embedded server configuration process, the absence of which previously led to a hang.
-          1.1.0       Добавлен параметр Action&lt;HttpContext&gt; onRequest к методам IConnector: Get, Send, GetLink; добавлен метод IConnector: ClearLink; исправлены обнаруженные недочёты.
-                         Added parameter Action&lt;HttpContext&gt; onRequest to IConnector methods: Get, Send, GetLink; added method IConnector: ClearLink; detected bugs fixed.
-        </PackageReleaseNotes>
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net8.0-windows;net6.0-windows</TargetFrameworks>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>Net.Leksi.E6dWebApp</AssemblyName>
+    <RootNamespace>Net.Leksi.E6dWebApp</RootNamespace>
+    <OutputType>Library</OutputType>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <Title>Embedded Web Application</Title>
+    <Authors>leksiq</Authors>
+    <Copyright>Алексей Юрьевич Захаров &lt;leksi@leksi.net&gt;, 2023</Copyright>
+    <PackageProjectUrl>https://github.com/Leksiqq/E6dWebApp/wiki</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/Leksiqq/E6dWebApp</RepositoryUrl>
+    <IsPackable>true</IsPackable>
+    <Version>1.1.17</Version>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageTags>embedded-web-application;razor-pages;asp.net-core;nunits;units-testing;source-generation</PackageTags>
+    <Description>Библиотека Net.Leksi.E6dWebApp позволяет встроить веб-сервис в локальное приложение для различных прикладных целей. The Net.Leksi.E6dWebApp library allows you to embed a web service into a local application for various application purposes.</Description>
+    <PackageReleaseNotes>
+      1.1.14			Добавлено перенаправление вывода на консоль из оработчика запроса.
+      Added redirection of output to the console from the request handler.
+      1.1.11			NET8.0
+      1.1.2	      Добавлена обработка исключений, возникающих в процессе конфигурации встраиваемого сервера, отсутствие которой ранее приводило к зависанию.
+      Added handling of exceptions that occur in the embedded server configuration process, the absence of which previously led to a hang.
+      1.1.0       Добавлен параметр Action&lt;HttpContext&gt; onRequest к методам IConnector: Get, Send, GetLink; добавлен метод IConnector: ClearLink; исправлены обнаруженные недочёты.
+      Added parameter Action&lt;HttpContext&gt; onRequest to IConnector methods: Get, Send, GetLink; added method IConnector: ClearLink; detected bugs fixed.
+    </PackageReleaseNotes>
     <NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>
+    <PackageOutputPath>../../nuget.local</PackageOutputPath>
   </PropertyGroup>
-  	<Target Name="CopyPackage" AfterTargets="Pack">
-    		<Move SourceFiles="$(OutputPath)\$(PackageId).$(PackageVersion).nupkg" DestinationFolder="W:\C#\nuget.local" />
-  	</Target>
 
-	<ItemGroup>
-	  <None Include="..\README.md">
-	    <Pack>True</Pack>
-	    <PackagePath>\</PackagePath>
-	  </None>
-	</ItemGroup>
+  <ItemGroup>
+    <None Include="..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
 </Project>
